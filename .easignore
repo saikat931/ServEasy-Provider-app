@@ -1,0 +1,12 @@
+# Exclude local dependencies and incomplete native folders so EAS runs clean cloud prebuild
+node_modules/
+.expo/
+.git/
+.bundle/
+android/
+ios/
+*.log
+npm-debug.log*
+yarn-error.log*
+.DS_Store
+
