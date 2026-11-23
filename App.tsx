@@ -23,6 +23,7 @@ import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import * as Updates from 'expo-updates';
 
 // Import our custom reusable components
 import { GlassCard } from './src/components/GlassCard';
@@ -148,6 +149,25 @@ function ProviderAppContent() {
       }).start();
     }
   }, [rightSidebarVisible]);
+
+  // Instantly apply the latest OTA update on launch so stale bundles with gray screens are automatically purged
+  useEffect(() => {
+    let isMounted = true;
+    async function syncOta() {
+      try {
+        if (__DEV__) return;
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable && isMounted) {
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync();
+        }
+      } catch (_) {}
+    }
+    syncOta();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Smoothly slide out right drawer before setting visible to false
   const closeRightDrawer = () => {
