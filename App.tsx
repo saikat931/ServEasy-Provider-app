@@ -17,6 +17,7 @@ import {
   ActivityIndicator,
   Linking,
   Animated,
+  Vibration,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,7 +28,6 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { GlassCard } from './src/components/GlassCard';
 import { Splash } from './src/components/Splash';
 import { ProviderAuthModal } from './src/components/ProviderAuthModal';
-import { IncomingBookingModal } from './src/components/IncomingBookingModal';
 import { RingtoneSettingsModal } from './src/components/RingtoneSettingsModal';
 import { RingtoneService } from './src/services/RingtoneService';
 import {
@@ -163,9 +163,7 @@ function ProviderAppContent() {
   // Bookings filter for Bookings Manager tab
   const [bookingFilter, setBookingFilter] = useState<'all' | 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled'>('all');
 
-  // Live Booking Ringtone & Alert Modal States
-  const [incomingBooking, setIncomingBooking] = useState<any | null>(null);
-  const [incomingModalVisible, setIncomingModalVisible] = useState<boolean>(false);
+  // Live Booking Ringtone & Alert Settings States
   const [ringtoneSettingsModalVisible, setRingtoneSettingsModalVisible] = useState<boolean>(false);
   const activeRingingBookingIdRef = useRef<number | string | null>(null);
   const handledBookingIdsRef = useRef<Set<number>>(new Set());
@@ -465,30 +463,25 @@ function ProviderAppContent() {
             toastMsg = `New booking ${bNumber} received from ${latestEvent.payload?.customer_name || 'Customer'}!`;
             toastType = 'success';
 
-            // Continuous ringtone and incoming booking modal
+            // Continuous ringtone and phone vibration alert (NO gray modal overlay)
             const bId = Number(latestEvent.booking_id || latestEvent.payload?.booking_id);
             if (bId && !handledBookingIdsRef.current.has(bId)) {
               handledBookingIdsRef.current.add(bId);
               activeRingingBookingIdRef.current = bId;
 
-              const incomingPayload = {
-                id: String(bId),
-                numericId: bId,
-                bookingNumber: bNumber,
-                customerName: latestEvent.payload?.customer_name || 'Customer',
-                customerPhone: latestEvent.payload?.customer_phone || '',
-                serviceName: latestEvent.payload?.service_name || 'Service Booking',
-                price: Number(latestEvent.payload?.total_amount || 0),
-                date: latestEvent.payload?.scheduled_date || 'Today',
-                time: latestEvent.payload?.scheduled_time || '',
-                address: latestEvent.payload?.service_address || latestEvent.payload?.address || 'Doorstep Service',
-                status: 'pending',
-                paymentMethod: latestEvent.payload?.payment_method || 'Cash on Delivery',
-                locationType: latestEvent.payload?.service_type || 'doorstep',
-              };
+              // 1. Immediately trigger repeating vibration pattern on device
+              try {
+                Vibration.vibrate([0, 800, 400, 800, 400, 800], true);
+              } catch (vErr) {
+                console.warn('Vibration error:', vErr);
+              }
 
-              setIncomingBooking(incomingPayload);
-              setIncomingModalVisible(true);
+              // 2. Play ringtone audio
+              try {
+                RingtoneService.startRinging(bId);
+              } catch (rErr) {
+                console.warn('Ringtone error:', rErr);
+              }
             }
           } else if (latestEvent.event_name === 'booking.accepted') {
             toastTitle = '✅ Booking Accepted';
@@ -503,14 +496,12 @@ function ProviderAppContent() {
             toastMsg = `Booking ${bNumber} was cancelled by the customer.`;
             toastType = 'warning';
 
-            // If cancelled booking is currently ringing, halt sound and close modal
-            const bId = Number(latestEvent.booking_id || latestEvent.payload?.booking_id);
-            if (activeRingingBookingIdRef.current === bId || (incomingBooking && incomingBooking.numericId === bId)) {
+            // If cancelled booking is currently ringing, halt sound and vibration immediately
+            try {
+              Vibration.cancel();
               RingtoneService.stopRinging();
-              setIncomingModalVisible(false);
-              setIncomingBooking(null);
-              activeRingingBookingIdRef.current = null;
-            }
+            } catch (_) {}
+            activeRingingBookingIdRef.current = null;
           }
 
           setLiveToast({
@@ -752,9 +743,10 @@ function ProviderAppContent() {
   };
 
   const confirmLogout = async () => {
-    RingtoneService.stopRinging();
-    setIncomingModalVisible(false);
-    setIncomingBooking(null);
+    try {
+      Vibration.cancel();
+      RingtoneService.stopRinging();
+    } catch (_) {}
     activeRingingBookingIdRef.current = null;
     setLogoutModalVisible(false);
     await clearStoredProviderUser();
@@ -772,83 +764,12 @@ function ProviderAppContent() {
     });
   };
 
-  // ─── Incoming Booking Alert Handlers ──────────────────────────────────────────
-  const handleIncomingAccept = async (booking: any) => {
-    RingtoneService.stopRinging();
-    setIncomingModalVisible(false);
-    activeRingingBookingIdRef.current = null;
-    const bId = booking.numericId || booking.id;
-    if (bId) handledBookingIdsRef.current.add(Number(bId));
-
-    if (!activeProviderId) {
-      showCustomAlert('Sign In Required', 'Please sign in to accept bookings.');
-      return;
-    }
-    try {
-      setActionInProgressId(Number(bId));
-      const res = await updateProviderBookingStatusApi(Number(bId), 'accepted', activeProviderId);
-      if (res.success) {
-        setLiveToast({
-          id: Date.now(),
-          title: '✅ Booking Accepted!',
-          message: `Booking #${bId} accepted successfully.`,
-          type: 'success',
-          actionTab: 'bookings',
-        });
-        loadLiveData(false);
-      } else {
-        showCustomAlert('Error', res.message || 'Failed to accept booking.');
-      }
-    } catch (err: any) {
-      showCustomAlert('Error', err?.message || 'Network error accepting booking.');
-    } finally {
-      setActionInProgressId(null);
-    }
-  };
-
-  const handleIncomingDecline = async (booking: any) => {
-    RingtoneService.stopRinging();
-    setIncomingModalVisible(false);
-    activeRingingBookingIdRef.current = null;
-    const bId = booking.numericId || booking.id;
-    if (bId) handledBookingIdsRef.current.add(Number(bId));
-
-    if (!activeProviderId) return;
-    try {
-      setActionInProgressId(Number(bId));
-      const res = await updateProviderBookingStatusApi(Number(bId), 'rejected', activeProviderId, 'Declined by provider');
-      if (res.success) {
-        setLiveToast({
-          id: Date.now(),
-          title: 'Booking Declined',
-          message: `Booking #${bId} was declined.`,
-          type: 'info',
-        });
-        loadLiveData(false);
-      }
-    } catch (err) {}
-    finally {
-      setActionInProgressId(null);
-    }
-  };
-
-  const handleIncomingExpire = (booking: any) => {
-    RingtoneService.stopRinging();
-    setIncomingModalVisible(false);
-    activeRingingBookingIdRef.current = null;
-    const bId = booking?.numericId || booking?.id;
-    if (bId) handledBookingIdsRef.current.add(Number(bId));
-
-    setLiveToast({
-      id: Date.now(),
-      title: '⏳ Booking Request Expired',
-      message: `Incoming request #${bId || ''} timed out without response.`,
-      type: 'warning',
-    });
-  };
-
   // ─── Booking Status Actions ──────────────────────────────────────────────────
   const handleAcceptBooking = async (booking: ProviderBooking) => {
+    try {
+      Vibration.cancel();
+      RingtoneService.stopRinging();
+    } catch (_) {}
     if (!activeProviderId) {
       showCustomAlert('Sign In Required', 'Please sign in to accept bookings.');
       return;
@@ -899,6 +820,10 @@ function ProviderAppContent() {
           style: 'destructive',
           onPress: async () => {
             try {
+              Vibration.cancel();
+              RingtoneService.stopRinging();
+            } catch (_) {}
+            try {
               setActionInProgressId(booking.numericId);
               const res = await updateProviderBookingStatusApi(booking.numericId, 'rejected', activeProviderId, 'Declined by provider');
               if (res.success) {
@@ -936,6 +861,10 @@ function ProviderAppContent() {
           style: 'destructive',
           onPress: async () => {
             try {
+              Vibration.cancel();
+              RingtoneService.stopRinging();
+            } catch (_) {}
+            try {
               setActionInProgressId(booking.numericId);
               const res = await updateProviderBookingStatusApi(booking.numericId, 'cancelled', activeProviderId, 'Cancelled by provider');
               if (res.success) {
@@ -971,6 +900,10 @@ function ProviderAppContent() {
         {
           text: 'Start Job',
           onPress: async () => {
+            try {
+              Vibration.cancel();
+              RingtoneService.stopRinging();
+            } catch (_) {}
             try {
               setActionInProgressId(booking.numericId);
               const res = await updateProviderBookingStatusApi(booking.numericId, 'in_progress', activeProviderId);
@@ -1020,6 +953,10 @@ function ProviderAppContent() {
         {
           text: 'Cash Collected',
           onPress: async () => {
+            try {
+              Vibration.cancel();
+              RingtoneService.stopRinging();
+            } catch (_) {}
             try {
               setActionInProgressId(booking.numericId);
               const res = await markBookingPaidApi(booking.numericId, activeProviderId);
@@ -1081,6 +1018,10 @@ function ProviderAppContent() {
         {
           text: 'Complete Job',
           onPress: async () => {
+            try {
+              Vibration.cancel();
+              RingtoneService.stopRinging();
+            } catch (_) {}
             try {
               setActionInProgressId(booking.numericId);
               const res = await updateProviderBookingStatusApi(booking.numericId, 'completed', activeProviderId);
@@ -3359,6 +3300,10 @@ function ProviderAppContent() {
             <TouchableOpacity
               activeOpacity={0.9}
               onPress={() => {
+                try {
+                  Vibration.cancel();
+                  RingtoneService.stopRinging();
+                } catch (_) {}
                 if (liveToast.actionTab) {
                   setActiveSection(liveToast.actionTab);
                 } else {
@@ -3422,7 +3367,16 @@ function ProviderAppContent() {
                     {liveToast.message}
                   </Text>
                 </View>
-                <TouchableOpacity onPress={() => setLiveToast(null)} style={styles.toastCloseBtn}>
+                <TouchableOpacity
+                  onPress={() => {
+                    try {
+                      Vibration.cancel();
+                      RingtoneService.stopRinging();
+                    } catch (_) {}
+                    setLiveToast(null);
+                  }}
+                  style={styles.toastCloseBtn}
+                >
                   <MaterialCommunityIcons name="close" size={16} color={activeTheme.textSecondary} />
                 </TouchableOpacity>
               </GlassWrapper>
@@ -5929,16 +5883,6 @@ function ProviderAppContent() {
             </GlassWrapper>
           </View>
         </Modal>
-
-        {/* INCOMING LIVE BOOKING ALERT MODAL & RINGTONE */}
-        <IncomingBookingModal
-          visible={incomingModalVisible}
-          booking={incomingBooking}
-          onAccept={handleIncomingAccept}
-          onDecline={handleIncomingDecline}
-          onExpire={handleIncomingExpire}
-          theme={theme}
-        />
 
         {/* LIVE BOOKING RINGTONE & NOTIFICATION SETTINGS MODAL */}
         <RingtoneSettingsModal
