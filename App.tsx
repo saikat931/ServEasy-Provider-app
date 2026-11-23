@@ -27,6 +27,9 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { GlassCard } from './src/components/GlassCard';
 import { Splash } from './src/components/Splash';
 import { ProviderAuthModal } from './src/components/ProviderAuthModal';
+import { IncomingBookingModal } from './src/components/IncomingBookingModal';
+import { RingtoneSettingsModal } from './src/components/RingtoneSettingsModal';
+import { RingtoneService } from './src/services/RingtoneService';
 import {
   ProviderBooking,
   ProviderServiceItem,
@@ -159,6 +162,13 @@ function ProviderAppContent() {
 
   // Bookings filter for Bookings Manager tab
   const [bookingFilter, setBookingFilter] = useState<'all' | 'pending' | 'accepted' | 'in_progress' | 'completed' | 'cancelled'>('all');
+
+  // Live Booking Ringtone & Alert Modal States
+  const [incomingBooking, setIncomingBooking] = useState<any | null>(null);
+  const [incomingModalVisible, setIncomingModalVisible] = useState<boolean>(false);
+  const [ringtoneSettingsModalVisible, setRingtoneSettingsModalVisible] = useState<boolean>(false);
+  const activeRingingBookingIdRef = useRef<number | string | null>(null);
+  const handledBookingIdsRef = useRef<Set<number>>(new Set());
 
   // Site Service Charge Dues State
   const [serviceChargeDue, setServiceChargeDue] = useState(0);
@@ -454,6 +464,32 @@ function ProviderAppContent() {
             toastTitle = '🔔 New Booking Alert!';
             toastMsg = `New booking ${bNumber} received from ${latestEvent.payload?.customer_name || 'Customer'}!`;
             toastType = 'success';
+
+            // Continuous ringtone and incoming booking modal
+            const bId = Number(latestEvent.booking_id || latestEvent.payload?.booking_id);
+            if (bId && !handledBookingIdsRef.current.has(bId)) {
+              handledBookingIdsRef.current.add(bId);
+              activeRingingBookingIdRef.current = bId;
+
+              const incomingPayload = {
+                id: String(bId),
+                numericId: bId,
+                bookingNumber: bNumber,
+                customerName: latestEvent.payload?.customer_name || 'Customer',
+                customerPhone: latestEvent.payload?.customer_phone || '',
+                serviceName: latestEvent.payload?.service_name || 'Service Booking',
+                price: Number(latestEvent.payload?.total_amount || 0),
+                date: latestEvent.payload?.scheduled_date || 'Today',
+                time: latestEvent.payload?.scheduled_time || '',
+                address: latestEvent.payload?.service_address || latestEvent.payload?.address || 'Doorstep Service',
+                status: 'pending',
+                paymentMethod: latestEvent.payload?.payment_method || 'Cash on Delivery',
+                locationType: latestEvent.payload?.service_type || 'doorstep',
+              };
+
+              setIncomingBooking(incomingPayload);
+              setIncomingModalVisible(true);
+            }
           } else if (latestEvent.event_name === 'booking.accepted') {
             toastTitle = '✅ Booking Accepted';
             toastMsg = `Booking ${bNumber} has been accepted.`;
@@ -462,6 +498,19 @@ function ProviderAppContent() {
             toastTitle = '❌ Booking Rejected';
             toastMsg = `Booking ${bNumber} was declined.`;
             toastType = 'warning';
+          } else if (latestEvent.event_name === 'booking.cancelled') {
+            toastTitle = '❌ Booking Cancelled';
+            toastMsg = `Booking ${bNumber} was cancelled by the customer.`;
+            toastType = 'warning';
+
+            // If cancelled booking is currently ringing, halt sound and close modal
+            const bId = Number(latestEvent.booking_id || latestEvent.payload?.booking_id);
+            if (activeRingingBookingIdRef.current === bId || (incomingBooking && incomingBooking.numericId === bId)) {
+              RingtoneService.stopRinging();
+              setIncomingModalVisible(false);
+              setIncomingBooking(null);
+              activeRingingBookingIdRef.current = null;
+            }
           }
 
           setLiveToast({
@@ -703,6 +752,10 @@ function ProviderAppContent() {
   };
 
   const confirmLogout = async () => {
+    RingtoneService.stopRinging();
+    setIncomingModalVisible(false);
+    setIncomingBooking(null);
+    activeRingingBookingIdRef.current = null;
     setLogoutModalVisible(false);
     await clearStoredProviderUser();
     setProviderUser(null);
@@ -716,6 +769,81 @@ function ProviderAppContent() {
       title: '🔒 Signed Out',
       message: 'You have been safely signed out.',
       type: 'info',
+    });
+  };
+
+  // ─── Incoming Booking Alert Handlers ──────────────────────────────────────────
+  const handleIncomingAccept = async (booking: any) => {
+    RingtoneService.stopRinging();
+    setIncomingModalVisible(false);
+    activeRingingBookingIdRef.current = null;
+    const bId = booking.numericId || booking.id;
+    if (bId) handledBookingIdsRef.current.add(Number(bId));
+
+    if (!activeProviderId) {
+      showCustomAlert('Sign In Required', 'Please sign in to accept bookings.');
+      return;
+    }
+    try {
+      setActionInProgressId(Number(bId));
+      const res = await updateProviderBookingStatusApi(Number(bId), 'accepted', activeProviderId);
+      if (res.success) {
+        setLiveToast({
+          id: Date.now(),
+          title: '✅ Booking Accepted!',
+          message: `Booking #${bId} accepted successfully.`,
+          type: 'success',
+          actionTab: 'bookings',
+        });
+        loadLiveData(false);
+      } else {
+        showCustomAlert('Error', res.message || 'Failed to accept booking.');
+      }
+    } catch (err: any) {
+      showCustomAlert('Error', err?.message || 'Network error accepting booking.');
+    } finally {
+      setActionInProgressId(null);
+    }
+  };
+
+  const handleIncomingDecline = async (booking: any) => {
+    RingtoneService.stopRinging();
+    setIncomingModalVisible(false);
+    activeRingingBookingIdRef.current = null;
+    const bId = booking.numericId || booking.id;
+    if (bId) handledBookingIdsRef.current.add(Number(bId));
+
+    if (!activeProviderId) return;
+    try {
+      setActionInProgressId(Number(bId));
+      const res = await updateProviderBookingStatusApi(Number(bId), 'rejected', activeProviderId, 'Declined by provider');
+      if (res.success) {
+        setLiveToast({
+          id: Date.now(),
+          title: 'Booking Declined',
+          message: `Booking #${bId} was declined.`,
+          type: 'info',
+        });
+        loadLiveData(false);
+      }
+    } catch (err) {}
+    finally {
+      setActionInProgressId(null);
+    }
+  };
+
+  const handleIncomingExpire = (booking: any) => {
+    RingtoneService.stopRinging();
+    setIncomingModalVisible(false);
+    activeRingingBookingIdRef.current = null;
+    const bId = booking?.numericId || booking?.id;
+    if (bId) handledBookingIdsRef.current.add(Number(bId));
+
+    setLiveToast({
+      id: Date.now(),
+      title: '⏳ Booking Request Expired',
+      message: `Incoming request #${bId || ''} timed out without response.`,
+      type: 'warning',
     });
   };
 
@@ -2678,7 +2806,54 @@ function ProviderAppContent() {
           )}
         </GlassCard>
 
-        {/* 6. Logout Button */}
+        {/* 6. Live Booking Ringtone & Sound Alert Card */}
+        <GlassCard theme={theme} style={styles.webProfileCard} intensity={activeTheme.glassIntensity}>
+          <View style={styles.webCardHeader}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <MaterialCommunityIcons name="bell-ring-outline" size={18} color="#0084FF" />
+              <Text style={styles.webCardHeaderTitle}>Live Booking Ringtone & Sound Alert</Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setRingtoneSettingsModalVisible(true)}
+              style={[styles.editBankBtn, { backgroundColor: 'rgba(0, 132, 255, 0.15)' }]}
+            >
+              <Text style={[styles.editBankBtnText, { color: '#0084FF' }]}>Change Ringtone</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ padding: 14 }}>
+            <Text style={{ fontSize: 13, color: activeTheme.textSecondary, marginBottom: 12 }}>
+              Customize your continuous ringtone and device sound for new incoming service bookings.
+            </Text>
+            <TouchableOpacity
+              onPress={() => setRingtoneSettingsModalVisible(true)}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: 12,
+                borderRadius: 10,
+                backgroundColor: activeTheme.tableHeaderBg,
+                borderWidth: 1,
+                borderColor: activeTheme.cardBorder,
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <MaterialCommunityIcons name="music-note" size={20} color="#0084FF" />
+                <View>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: activeTheme.textPrimary }}>
+                    Configure Live Ringtone
+                  </Text>
+                  <Text style={{ fontSize: 11, color: activeTheme.textSecondary }}>
+                    ServEasy Default or Custom Device Music
+                  </Text>
+                </View>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={18} color={activeTheme.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        </GlassCard>
+
+        {/* 7. Logout Button */}
         <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
           <MaterialCommunityIcons name="logout" size={18} color="#FF453A" />
           <Text style={styles.logoutBtnText}>Log Out from Provider Portal</Text>
@@ -4265,6 +4440,28 @@ function ProviderAppContent() {
                   <MaterialCommunityIcons name="refresh" size={16} color={activeTheme.textSecondary} />
                 </TouchableOpacity>
 
+                {/* Quick Action: Live Booking Ringtone */}
+                <TouchableOpacity
+                  style={styles.drawerActionItem}
+                  onPress={() => {
+                    closeRightDrawer();
+                    setRingtoneSettingsModalVisible(true);
+                  }}
+                >
+                  <View style={[styles.drawerActionIconBox, { backgroundColor: 'rgba(0, 132, 255, 0.15)' }]}>
+                    <MaterialCommunityIcons name="bell-ring-outline" size={18} color="#0084FF" />
+                  </View>
+                  <View style={styles.drawerMenuTextBox}>
+                    <Text style={[styles.drawerMenuTitle, { color: activeTheme.textPrimary }]}>
+                      Live Booking Ringtone
+                    </Text>
+                    <Text style={[styles.drawerMenuSub, { color: activeTheme.textSecondary }]}>
+                      Default ringtone & custom music
+                    </Text>
+                  </View>
+                  <MaterialCommunityIcons name="chevron-right" size={16} color={activeTheme.textSecondary} />
+                </TouchableOpacity>
+
                 {/* Quick Action: Toggle Dark/Light Theme */}
                 <TouchableOpacity
                   style={styles.drawerActionItem}
@@ -5732,6 +5929,23 @@ function ProviderAppContent() {
             </GlassWrapper>
           </View>
         </Modal>
+
+        {/* INCOMING LIVE BOOKING ALERT MODAL & RINGTONE */}
+        <IncomingBookingModal
+          visible={incomingModalVisible}
+          booking={incomingBooking}
+          onAccept={handleIncomingAccept}
+          onDecline={handleIncomingDecline}
+          onExpire={handleIncomingExpire}
+          theme={theme}
+        />
+
+        {/* LIVE BOOKING RINGTONE & NOTIFICATION SETTINGS MODAL */}
+        <RingtoneSettingsModal
+          visible={ringtoneSettingsModalVisible}
+          onClose={() => setRingtoneSettingsModalVisible(false)}
+          theme={theme}
+        />
       </View>
   );
 }
