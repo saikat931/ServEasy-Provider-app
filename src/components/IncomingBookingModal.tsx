@@ -5,20 +5,16 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Animated,
   Dimensions,
   Platform,
   ActivityIndicator,
 } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { ProviderBooking } from '../services/api';
 import { RingtoneService } from '../services/RingtoneService';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 interface IncomingBookingModalProps {
   visible: boolean;
-  booking: ProviderBooking | any | null;
+  booking: any;
   onAccept: (booking: any) => Promise<void> | void;
   onDecline: (booking: any) => Promise<void> | void;
   onExpire?: (booking: any) => void;
@@ -37,12 +33,6 @@ export const IncomingBookingModal: React.FC<IncomingBookingModalProps> = ({
   const [isAccepting, setIsAccepting] = useState<boolean>(false);
   const [isDeclining, setIsDeclining] = useState<boolean>(false);
 
-  // Animations
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const pulseOpacity = useRef(new Animated.Value(0.7)).current;
-  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT * 0.4)).current;
-  const progressAnim = useRef(new Animated.Value(1)).current;
-
   // Countdown timer ref
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -52,62 +42,15 @@ export const IncomingBookingModal: React.FC<IncomingBookingModalProps> = ({
       setIsAccepting(false);
       setIsDeclining(false);
 
-      // Start looping ringtone immediately
+      // Start looping ringtone & vibration immediately
       const bookingId = booking.numericId || booking.id || booking.booking_id || 'new_booking';
       RingtoneService.startRinging(bookingId);
-
-      // Slide in card
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        tension: 65,
-        friction: 9,
-        useNativeDriver: true,
-      }).start();
-
-      // Start pulsing radar
-      Animated.loop(
-        Animated.parallel([
-          Animated.sequence([
-            Animated.timing(pulseAnim, {
-              toValue: 1.45,
-              duration: 1200,
-              useNativeDriver: true,
-            }),
-            Animated.timing(pulseAnim, {
-              toValue: 1.0,
-              duration: 1200,
-              useNativeDriver: true,
-            }),
-          ]),
-          Animated.sequence([
-            Animated.timing(pulseOpacity, {
-              toValue: 0.15,
-              duration: 1200,
-              useNativeDriver: true,
-            }),
-            Animated.timing(pulseOpacity, {
-              toValue: 0.7,
-              duration: 1200,
-              useNativeDriver: true,
-            }),
-          ]),
-        ])
-      ).start();
-
-      // Countdown timer
-      progressAnim.setValue(1);
-      Animated.timing(progressAnim, {
-        toValue: 0,
-        duration: 60000,
-        useNativeDriver: false,
-      }).start();
 
       if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = setInterval(() => {
         setSecondsRemaining((prev) => {
           if (prev <= 1) {
             if (timerRef.current) clearInterval(timerRef.current);
-            // Expired!
             RingtoneService.stopRinging();
             if (onExpire) onExpire(booking);
             return 0;
@@ -116,7 +59,6 @@ export const IncomingBookingModal: React.FC<IncomingBookingModalProps> = ({
         });
       }, 1000);
     } else {
-      // Stopped/Dismissed
       RingtoneService.stopRinging();
       if (timerRef.current) clearInterval(timerRef.current);
     }
@@ -146,9 +88,9 @@ export const IncomingBookingModal: React.FC<IncomingBookingModalProps> = ({
     booking.service_name ||
     'Service Booking';
   const price =
-    typeof booking.price === 'number'
+    typeof booking.price === 'number' && !isNaN(booking.price)
       ? booking.price
-      : parseFloat(booking.total_amount || booking.price || '0');
+      : parseFloat(booking.total_amount || booking.price || '0') || 0;
   const address =
     booking.address ||
     (booking.locationType === 'shop' ? 'At Provider Shop / Center' : 'Doorstep Service');
@@ -177,33 +119,23 @@ export const IncomingBookingModal: React.FC<IncomingBookingModalProps> = ({
     }
   };
 
+  const progressPercent = Math.max(0, Math.min(100, (secondsRemaining / 60) * 100));
+
   return (
     <Modal
       transparent
-      animationType="fade"
+      animationType="slide"
       visible={visible}
       onRequestClose={handleDeclinePress}
       statusBarTranslucent
     >
       <View style={styles.backdrop}>
-        {/* Pulsing Radar Ring Behind Card */}
-        <Animated.View
-          style={[
-            styles.radarPulse,
-            {
-              transform: [{ scale: pulseAnim }],
-              opacity: pulseOpacity,
-            },
-          ]}
-        />
-
-        <Animated.View
+        <View
           style={[
             styles.cardContainer,
             {
               backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
-              borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
-              transform: [{ translateY: slideAnim }],
+              borderColor: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.12)',
             },
           ]}
         >
@@ -211,7 +143,7 @@ export const IncomingBookingModal: React.FC<IncomingBookingModalProps> = ({
           <View style={styles.headerRow}>
             <View style={styles.liveTag}>
               <View style={styles.liveDot} />
-              <Text style={styles.liveTagText}>INCOMING SERVICE REQUEST</Text>
+              <Text style={styles.liveTagText}>INCOMING LIVE BOOKING</Text>
             </View>
             <View style={styles.timerBadge}>
               <MaterialCommunityIcons name="timer-sand" size={16} color="#FF9500" />
@@ -221,14 +153,11 @@ export const IncomingBookingModal: React.FC<IncomingBookingModalProps> = ({
 
           {/* Countdown Linear Bar */}
           <View style={styles.progressBarTrack}>
-            <Animated.View
+            <View
               style={[
                 styles.progressBarFill,
                 {
-                  width: progressAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: ['0%', '100%'],
-                  }),
+                  width: `${progressPercent}%`,
                   backgroundColor: secondsRemaining > 20 ? '#0084FF' : '#FF453A',
                 },
               ]}
@@ -238,14 +167,14 @@ export const IncomingBookingModal: React.FC<IncomingBookingModalProps> = ({
           {/* Service & Price Highlight Row */}
           <View style={styles.highlightBox}>
             <View style={styles.iconCircle}>
-              <MaterialCommunityIcons name="lightning-bolt" size={28} color="#0084FF" />
+              <MaterialCommunityIcons name="lightning-bolt" size={26} color="#0084FF" />
             </View>
             <View style={styles.serviceDetails}>
               <Text style={[styles.serviceTitle, { color: isDark ? '#FFFFFF' : '#111827' }]} numberOfLines={1}>
                 {serviceName}
               </Text>
               <Text style={[styles.bookingIdText, { color: isDark ? '#9CA3AF' : '#6B7280' }]}>
-                {bookingNumber} • {paymentMethod.toUpperCase()}
+                {bookingNumber} • {String(paymentMethod).toUpperCase()}
               </Text>
             </View>
             <View style={styles.priceContainer}>
@@ -258,7 +187,7 @@ export const IncomingBookingModal: React.FC<IncomingBookingModalProps> = ({
           <View
             style={[
               styles.detailsCard,
-              { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F9FAFB' },
+              { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6' },
             ]}
           >
             <View style={styles.detailRow}>
@@ -278,7 +207,7 @@ export const IncomingBookingModal: React.FC<IncomingBookingModalProps> = ({
               </Text>
             </View>
 
-            {booking.time && (
+            {Boolean(booking.time) && (
               <View style={styles.detailRow}>
                 <MaterialCommunityIcons name="clock-outline" size={18} color="#F59E0B" />
                 <Text style={[styles.detailText, { color: isDark ? '#D1D5DB' : '#4B5563' }]}>
@@ -295,8 +224,8 @@ export const IncomingBookingModal: React.FC<IncomingBookingModalProps> = ({
               style={[
                 styles.declineButton,
                 {
-                  borderColor: isDark ? 'rgba(255,69,58,0.4)' : '#FECACA',
-                  backgroundColor: isDark ? 'rgba(255,69,58,0.1)' : '#FEF2F2',
+                  borderColor: isDark ? 'rgba(255,69,58,0.5)' : '#FECACA',
+                  backgroundColor: isDark ? 'rgba(255,69,58,0.15)' : '#FEF2F2',
                 },
               ]}
               onPress={handleDeclinePress}
@@ -335,7 +264,7 @@ export const IncomingBookingModal: React.FC<IncomingBookingModalProps> = ({
               )}
             </TouchableOpacity>
           </View>
-        </Animated.View>
+        </View>
       </View>
     </Modal>
   );
@@ -344,35 +273,26 @@ export const IncomingBookingModal: React.FC<IncomingBookingModalProps> = ({
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.78)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-  },
-  radarPulse: {
-    position: 'absolute',
-    width: SCREEN_WIDTH * 0.9,
-    height: SCREEN_WIDTH * 0.9,
-    borderRadius: (SCREEN_WIDTH * 0.9) / 2,
-    borderWidth: 3,
-    borderColor: '#0084FF',
-    backgroundColor: 'rgba(0, 132, 255, 0.08)',
+    padding: 16,
   },
   cardContainer: {
     width: '100%',
     maxWidth: 420,
-    borderRadius: 24,
+    borderRadius: 22,
     borderWidth: 1.5,
-    padding: 22,
+    padding: 20,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 12 },
+        shadowOffset: { width: 0, height: 10 },
         shadowOpacity: 0.35,
-        shadowRadius: 20,
+        shadowRadius: 18,
       },
       android: {
-        elevation: 20,
+        elevation: 24,
       },
     }),
   },
@@ -380,7 +300,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   liveTag: {
     flexDirection: 'row',
@@ -419,10 +339,10 @@ const styles = StyleSheet.create({
   },
   progressBarTrack: {
     height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     borderRadius: 2,
     overflow: 'hidden',
-    marginBottom: 18,
+    marginBottom: 16,
   },
   progressBarFill: {
     height: '100%',
@@ -434,9 +354,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   iconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(0, 132, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -472,7 +392,7 @@ const styles = StyleSheet.create({
   detailsCard: {
     borderRadius: 14,
     padding: 14,
-    marginBottom: 20,
+    marginBottom: 18,
     gap: 10,
   },
   detailRow: {
