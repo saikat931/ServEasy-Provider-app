@@ -18,7 +18,7 @@ import {
   Linking,
   Animated,
 } from 'react-native';
-import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -105,7 +105,8 @@ interface CustomAlertData {
   buttons: CustomAlertButton[];
 }
 
-export default function App() {
+function ProviderAppContent() {
+  const insets = useSafeAreaInsets();
   // Splash Screen Visibility State
   const [showSplash, setShowSplash] = useState(true);
 
@@ -3160,8 +3161,7 @@ export default function App() {
   };
 
   return (
-    <SafeAreaProvider>
-      <View style={styles.appContainer}>
+    <View style={styles.appContainer}>
         {/* Fullscreen Gradient Background */}
         <LinearGradient colors={activeTheme.gradientColors} style={StyleSheet.absoluteFill} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
 
@@ -3731,7 +3731,7 @@ export default function App() {
               onPress={closeRightDrawer}
             />
 
-            {/* Sliding Drawer Container */}
+            {/* Sliding Drawer Container positioned strictly within safe area */}
             <Animated.View
               style={[
                 styles.rightDrawerContainer,
@@ -3739,8 +3739,14 @@ export default function App() {
                   backgroundColor: theme === 'dark' ? '#14171C' : '#FFFFFF',
                   borderLeftColor: activeTheme.cardBorder,
                   transform: [{ translateX: drawerSlideAnim }],
+                  top: insets.top,
+                  bottom: insets.bottom,
+                  right: insets.right,
+                  borderTopRightRadius: insets.top > 0 ? 18 : 0,
+                  borderBottomRightRadius: insets.bottom > 0 ? 18 : 0,
                 },
               ]}
+              onStartShouldSetResponder={() => true}
             >
               {/* Drawer Header with Provider Info & Close */}
               <View style={[styles.rightDrawerHeader, { borderBottomColor: activeTheme.cardBorder }]}>
@@ -5722,6 +5728,13 @@ export default function App() {
           </View>
         </Modal>
       </View>
+  );
+}
+
+export default function App() {
+  return (
+    <SafeAreaProvider>
+      <ProviderAppContent />
     </SafeAreaProvider>
   );
 }
@@ -8305,13 +8318,13 @@ const styles = StyleSheet.create({
   rightDrawerBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.55)',
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
   },
   rightDrawerContainer: {
+    position: 'absolute',
     width: Math.min(340, SCREEN_WIDTH * 0.86),
-    height: '100%',
     borderLeftWidth: 1,
+    borderTopLeftRadius: 20,
+    borderBottomLeftRadius: 20,
     display: 'flex',
     flexDirection: 'column',
     shadowColor: '#000',
