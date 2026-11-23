@@ -334,6 +334,7 @@ function ProviderAppContent() {
         const stored = await getStoredProviderUser();
         if (stored) {
           setProviderUser(stored);
+          loadLiveData(false, stored.id);
         } else {
           // If not logged in, show benefits and prompt provider to log in via OTP
           setAuthModalVisible(true);
@@ -667,6 +668,10 @@ function ProviderAppContent() {
     glassIntensity: theme === 'dark' ? 25 : 30,
     accentBtnBg: theme === 'dark' ? 'rgba(25, 27, 30, 0.4)' : '#0084FF',
     accentBtnText: '#FFFFFF',
+    inputBg: theme === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 132, 255, 0.04)',
+    inputBorder: theme === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 132, 255, 0.2)',
+    pillInactiveBg: theme === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 132, 255, 0.06)',
+    pillInactiveText: theme === 'dark' ? '#A0A5AD' : '#64748B',
     navBg: Platform.OS === 'android'
       ? (theme === 'dark' ? 'rgba(15, 17, 20, 0.82)' : 'rgba(240, 246, 255, 0.85)')
       : (theme === 'dark' ? 'rgba(8, 9, 12, 0.22)' : 'rgba(255, 255, 255, 0.35)'),

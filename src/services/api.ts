@@ -4,7 +4,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Dynamically determine the backend API base endpoint
 const getBaseApiUrl = (): string => {
-  // 1. Use explicit build-time/env public API URL when building standalone APKs for any network
   const envApiUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
   if (envApiUrl) {
     let clean = envApiUrl.replace(/\/+$/, '');
@@ -13,15 +12,7 @@ const getBaseApiUrl = (): string => {
     }
     return clean;
   }
-  // 2. Extract host IP dynamically from Expo dev server
-  const hostUri = Constants.expoConfig?.hostUri || (Constants as any)?.manifest?.debuggerHost;
-  if (hostUri) {
-    const ip = hostUri.split(':')[0];
-    if (ip && ip !== 'localhost') {
-      return `http://${ip}/ServEasy/backend/api`;
-    }
-  }
-  return '';
+  return 'https://beige-curlew-610555.hostingersite.com/api';
 };
 
 export const API_BASE_URL = getBaseApiUrl();
@@ -587,18 +578,25 @@ export async function createProviderServiceApi(
   }
 }
 
+let cachedOtpConfig: OtpConfig | null = null;
+
 /**
  * Fetch global OTP configuration managed by Super Admin
  */
 export async function fetchOtpConfigApi(): Promise<OtpConfig | null> {
+  if (!API_BASE_URL) return null;
+  if (cachedOtpConfig) return cachedOtpConfig;
   try {
     const res = await fetch(`${API_BASE_URL}/platform-settings.php?action=get_otp_config`, {
+      method: 'GET',
       headers: { 'Accept': 'application/json' },
     });
     if (res.ok) {
       const json = await res.json();
-      if (json.status === 'success' && json.data) {
-        return json.data as OtpConfig;
+      const data = json?.data || (json?.success ? json : null);
+      if (data && (json?.status === 'success' || json?.success || data?.mode)) {
+        cachedOtpConfig = (json.data || data) as OtpConfig;
+        return cachedOtpConfig;
       }
     }
   } catch (e) {
@@ -611,8 +609,12 @@ export async function fetchOtpConfigApi(): Promise<OtpConfig | null> {
  * Send OTP for Provider Login (dealer-auth-api.php)
  */
 export async function sendProviderOtpApi(
-  identity: string
+  identity: string,
+  signal?: AbortSignal
 ): Promise<{ success: boolean; message: string; otp?: string; attempt?: number; max_attempts?: number }> {
+  if (!API_BASE_URL) {
+    return { success: false, message: 'Failed to connect with server' };
+  }
   try {
     const res = await fetch(`${API_BASE_URL}/dealer-auth-api.php`, {
       method: 'POST',
@@ -621,6 +623,7 @@ export async function sendProviderOtpApi(
         'Accept': 'application/json',
       },
       body: `action=send_otp&identity=${encodeURIComponent(identity.trim())}`,
+      signal,
     });
 
     if (res.ok) {
@@ -636,10 +639,14 @@ export async function sendProviderOtpApi(
       }
       return { success: false, message: json.message || 'Failed to send OTP' };
     }
-  } catch (e) {
+    return { success: false, message: 'Failed to connect with server' };
+  } catch (e: any) {
+    if (e?.name === 'AbortError' || signal?.aborted) {
+      return { success: false, message: 'Request cancelled.' };
+    }
     console.log('[Provider API] Send OTP error:', e);
+    return { success: false, message: 'Failed to connect with server' };
   }
-  return { success: false, message: 'Network connection failed' };
 }
 
 /**
@@ -647,8 +654,12 @@ export async function sendProviderOtpApi(
  */
 export async function verifyProviderOtpApi(
   identity: string,
-  otp: string
+  otp: string,
+  signal?: AbortSignal
 ): Promise<{ success: boolean; message: string; user?: ProviderUser; access_token?: string }> {
+  if (!API_BASE_URL) {
+    return { success: false, message: 'Failed to connect with server' };
+  }
   try {
     const res = await fetch(`${API_BASE_URL}/dealer-auth-api.php`, {
       method: 'POST',
@@ -657,6 +668,7 @@ export async function verifyProviderOtpApi(
         'Accept': 'application/json',
       },
       body: `action=verify_otp&identity=${encodeURIComponent(identity.trim())}&otp=${encodeURIComponent(otp.trim())}`,
+      signal,
     });
 
     if (res.ok) {
@@ -670,17 +682,21 @@ export async function verifyProviderOtpApi(
           : undefined;
         return {
           success: true,
-          message: 'Login successful',
+          message: json.message || 'Login successful',
           user: fullUser,
           access_token: json.access_token,
         };
       }
       return { success: false, message: json.message || 'Invalid verification code' };
     }
-  } catch (e) {
+    return { success: false, message: 'Failed to connect with server' };
+  } catch (e: any) {
+    if (e?.name === 'AbortError' || signal?.aborted) {
+      return { success: false, message: 'Request cancelled.' };
+    }
     console.log('[Provider API] Verify OTP error:', e);
+    return { success: false, message: 'Failed to connect with server' };
   }
-  return { success: false, message: 'Network error verifying OTP' };
 }
 
 /**
