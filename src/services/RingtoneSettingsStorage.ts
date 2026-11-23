@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system/legacy';
 
 export type RingtoneType = 'default' | 'custom';
 
@@ -22,6 +21,15 @@ export const DEFAULT_RINGTONE_SETTINGS: RingtoneSettings = {
   vibrationEnabled: true,
   volume: 1.0,
 };
+
+function getFileSystem(): typeof import('expo-file-system/legacy') | null {
+  try {
+    return require('expo-file-system/legacy');
+  } catch (e) {
+    console.warn('[RingtoneSettingsStorage] Native expo-file-system module not found in binary build.');
+    return null;
+  }
+}
 
 /**
  * Load saved ringtone settings from persistent device storage.
@@ -61,8 +69,6 @@ export async function saveRingtoneSettings(settings: RingtoneSettings): Promise<
 
 /**
  * Validate and safely copy a picked audio file into the app's persistent internal storage.
- * On Android SAF / DocumentPicker, content:// URIs can expire or become inaccessible on reboot.
- * Copying to FileSystem.documentDirectory guarantees permanent, sandboxed local access.
  */
 export async function saveCustomAudioFile(
   sourceUri: string,
@@ -70,8 +76,12 @@ export async function saveCustomAudioFile(
   fileSize?: number
 ): Promise<{ success: boolean; persistentUri?: string; fileName?: string; error?: string }> {
   try {
-    if (!FileSystem.documentDirectory) {
-      return { success: false, error: 'Device document directory not accessible.' };
+    const fs = getFileSystem();
+    if (!fs || !fs.documentDirectory) {
+      return {
+        success: false,
+        error: 'File system storage requires the latest native APK build. Please download the update.',
+      };
     }
 
     // Determine extension
@@ -87,7 +97,7 @@ export async function saveCustomAudioFile(
       };
     }
 
-    // Limit maximum file size to 25MB to avoid memory pressure during playback
+    // Limit maximum file size to 25MB
     if (fileSize && fileSize > 25 * 1024 * 1024) {
       return {
         success: false,
@@ -95,29 +105,27 @@ export async function saveCustomAudioFile(
       };
     }
 
-    const destinationUri = `${FileSystem.documentDirectory}serveasy_custom_ringtone.${ext}`;
+    const destinationUri = `${fs.documentDirectory}serveasy_custom_ringtone.${ext}`;
 
     // Clean up any previously stored custom ringtone file
     try {
-      const existing = await FileSystem.getInfoAsync(destinationUri);
+      const existing = await fs.getInfoAsync(destinationUri);
       if (existing.exists) {
-        await FileSystem.deleteAsync(destinationUri, { idempotent: true });
+        await fs.deleteAsync(destinationUri, { idempotent: true });
       }
     } catch (_) {}
 
     // Copy to persistent sandboxed directory
-    await FileSystem.copyAsync({
+    await fs.copyAsync({
       from: sourceUri,
       to: destinationUri,
     });
 
-    // Verify the copied file exists and has size > 0
-    const info = await FileSystem.getInfoAsync(destinationUri);
+    const info = await fs.getInfoAsync(destinationUri);
     if (!info.exists || (info.size && info.size === 0)) {
       return { success: false, error: 'Could not write custom audio file to local storage.' };
     }
 
-    // Update settings in AsyncStorage
     const current = await loadRingtoneSettings();
     const updated: RingtoneSettings = {
       ...current,
@@ -144,10 +152,11 @@ export async function saveCustomAudioFile(
  */
 export async function restoreDefaultRingtone(): Promise<boolean> {
   try {
+    const fs = getFileSystem();
     const current = await loadRingtoneSettings();
-    if (current.customFileUri) {
+    if (current.customFileUri && fs) {
       try {
-        await FileSystem.deleteAsync(current.customFileUri, { idempotent: true });
+        await fs.deleteAsync(current.customFileUri, { idempotent: true });
       } catch (_) {}
     }
 

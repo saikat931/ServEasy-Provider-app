@@ -12,7 +12,6 @@ import {
   Platform,
 } from 'react-native';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import * as DocumentPicker from 'expo-document-picker';
 import {
   loadRingtoneSettings,
   saveRingtoneSettings,
@@ -22,6 +21,15 @@ import {
   DEFAULT_RINGTONE_SETTINGS,
 } from '../services/RingtoneSettingsStorage';
 import { RingtoneService } from '../services/RingtoneService';
+
+function getDocumentPicker(): typeof import('expo-document-picker') | null {
+  try {
+    return require('expo-document-picker');
+  } catch (err) {
+    console.warn('[RingtoneSettingsModal] Native DocumentPicker module not found in binary build.');
+    return null;
+  }
+}
 
 interface RingtoneSettingsModalProps {
   visible: boolean;
@@ -93,7 +101,17 @@ export const RingtoneSettingsModal: React.FC<RingtoneSettingsModalProps> = ({
     setIsPicking(true);
 
     try {
-      const result = await DocumentPicker.getDocumentAsync({
+      const picker = getDocumentPicker();
+      if (!picker || !picker.getDocumentAsync) {
+        Alert.alert(
+          'APK Update Required',
+          'Importing custom audio from device storage requires the latest native APK build. Please install the updated APK from your dashboard.'
+        );
+        setIsPicking(false);
+        return;
+      }
+
+      const result = await picker.getDocumentAsync({
         type: ['audio/*'],
         copyToCacheDirectory: true,
         multiple: false,

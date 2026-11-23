@@ -1,14 +1,29 @@
 import { Vibration, Platform } from 'react-native';
-import { createAudioPlayer, setAudioModeAsync, AudioPlayer, AudioSource } from 'expo-audio';
-import * as FileSystem from 'expo-file-system/legacy';
 import { loadRingtoneSettings, RingtoneSettings } from './RingtoneSettingsStorage';
 
 // Bundled copyright-safe default ringtone asset
 const DEFAULT_RINGTONE_ASSET = require('../../assets/audio/serveasy_booking_ringtone.wav');
 
+function getExpoAudio(): typeof import('expo-audio') | null {
+  try {
+    return require('expo-audio');
+  } catch (err) {
+    console.warn('[RingtoneService] Native ExpoAudio module not found in binary build.');
+    return null;
+  }
+}
+
+function getFileSystem(): typeof import('expo-file-system/legacy') | null {
+  try {
+    return require('expo-file-system/legacy');
+  } catch (err) {
+    return null;
+  }
+}
+
 class RingtoneServiceManager {
-  private player: AudioPlayer | null = null;
-  private previewPlayer: AudioPlayer | null = null;
+  private player: any = null;
+  private previewPlayer: any = null;
   private activeBookingId: number | string | null = null;
   private isRingingNow: boolean = false;
   private isPreviewingNow: boolean = false;
@@ -21,8 +36,11 @@ class RingtoneServiceManager {
    */
   private async ensureAudioMode(): Promise<void> {
     if (this.isAudioModeConfigured) return;
+    const AudioModule = getExpoAudio();
+    if (!AudioModule || !AudioModule.setAudioModeAsync) return;
+
     try {
-      await setAudioModeAsync({
+      await AudioModule.setAudioModeAsync({
         playsInSilentMode: true,
         shouldPlayInBackground: true,
         interruptionMode: 'mixWithOthers',
@@ -36,16 +54,19 @@ class RingtoneServiceManager {
   /**
    * Determine the audio source based on user settings and file availability.
    */
-  private async resolveAudioSource(settings: RingtoneSettings): Promise<AudioSource> {
+  private async resolveAudioSource(settings: RingtoneSettings): Promise<any> {
     if (settings.type === 'custom' && settings.customFileUri) {
-      try {
-        const info = await FileSystem.getInfoAsync(settings.customFileUri);
-        if (info.exists) {
-          return { uri: settings.customFileUri };
+      const fs = getFileSystem();
+      if (fs) {
+        try {
+          const info = await fs.getInfoAsync(settings.customFileUri);
+          if (info.exists) {
+            return { uri: settings.customFileUri };
+          }
+          console.warn('[RingtoneService] Custom audio file missing, reverting to default ringtone.');
+        } catch (e) {
+          console.warn('[RingtoneService] Error inspecting custom audio file:', e);
         }
-        console.warn('[RingtoneService] Custom audio file missing, reverting to default ringtone.');
-      } catch (e) {
-        console.warn('[RingtoneService] Error inspecting custom audio file:', e);
       }
     }
     // Default asset
@@ -65,27 +86,14 @@ class RingtoneServiceManager {
     }
 
     try {
-      await this.ensureAudioMode();
-
-      // If previewing, stop preview first
       this.stopPreview();
-
-      // Release any existing player to prevent overlapping sounds
       this.stopRinging();
 
       const settings = await loadRingtoneSettings();
-      const source = await this.resolveAudioSource(settings);
-
-      const player = createAudioPlayer(source);
-      player.loop = true;
-      player.volume = settings.volume ?? 1.0;
-      player.play();
-
-      this.player = player;
       this.activeBookingId = bookingId;
       this.isRingingNow = true;
 
-      // Start repeating vibration alert if enabled
+      // Always start repeating vibration alert
       if (settings.vibrationEnabled) {
         try {
           // Vibration pattern: wait 0ms, vibrate 800ms, wait 400ms, vibrate 800ms, wait 600ms
@@ -96,11 +104,24 @@ class RingtoneServiceManager {
         }
       }
 
-      console.log(`[RingtoneService] Started continuous ringtone for booking #${bookingId}`);
+      // Try playing audio if native module is present in the binary
+      const AudioModule = getExpoAudio();
+      if (AudioModule && AudioModule.createAudioPlayer) {
+        await this.ensureAudioMode();
+        const source = await this.resolveAudioSource(settings);
+        const player = AudioModule.createAudioPlayer(source);
+        player.loop = true;
+        player.volume = settings.volume ?? 1.0;
+        player.play();
+        this.player = player;
+      } else {
+        console.log('[RingtoneService] Running in vibration-only mode until native APK is updated.');
+      }
+
+      console.log(`[RingtoneService] Started ringing alert for booking #${bookingId}`);
       return true;
     } catch (err) {
       console.error('[RingtoneService] Failed to start ringtone:', err);
-      this.stopRinging();
       return false;
     }
   }
@@ -138,24 +159,32 @@ class RingtoneServiceManager {
    * Preview a ringtone in Settings (either default or custom file).
    */
   public async previewRingtone(customUri?: string | null): Promise<boolean> {
+    const AudioModule = getExpoAudio();
+    if (!AudioModule || !AudioModule.createAudioPlayer) {
+      return false;
+    }
+
     try {
       await this.ensureAudioMode();
       this.stopRinging();
       this.stopPreview();
 
-      let source: AudioSource = DEFAULT_RINGTONE_ASSET;
+      let source: any = DEFAULT_RINGTONE_ASSET;
 
       if (customUri) {
-        const info = await FileSystem.getInfoAsync(customUri);
-        if (info.exists) {
-          source = { uri: customUri };
+        const fs = getFileSystem();
+        if (fs) {
+          const info = await fs.getInfoAsync(customUri);
+          if (info.exists) {
+            source = { uri: customUri };
+          }
         }
       } else {
         const settings = await loadRingtoneSettings();
         source = await this.resolveAudioSource(settings);
       }
 
-      const player = createAudioPlayer(source);
+      const player = AudioModule.createAudioPlayer(source);
       player.loop = true;
       player.volume = 1.0;
       player.play();
