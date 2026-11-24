@@ -1385,7 +1385,7 @@ function ProviderAppContent() {
     return <Splash onAnimationEnd={() => setShowSplash(false)} />;
   }
 
-  // ─── Render Booking Card (Reusable) ──────────────────────────────────────────
+  // ─── Render Booking Card (Reusable & Distinct Card) ──────────────────────────
   const renderBookingCard = (booking: ProviderBooking, isCompact: boolean = false) => {
     const statusStyle = getStatusBadgeStyle(booking.status);
     const isBusy = actionInProgressId === booking.numericId;
@@ -1394,116 +1394,177 @@ function ProviderAppContent() {
       <View
         key={booking.id}
         style={[
-          styles.dashboardBookingItem,
-          { borderBottomColor: activeTheme.cardBorder },
-          !isCompact && { borderBottomWidth: 0, paddingVertical: 0 },
+          styles.distinctBookingCard,
+          {
+            backgroundColor: theme === 'dark' ? '#171B24' : '#FFFFFF',
+            borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.09)' : 'rgba(0, 0, 0, 0.08)',
+          },
         ]}
       >
-        <View style={styles.bookingHeader}>
-          <View style={{ flex: 1, paddingRight: 8 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 2 }}>
-              <Text style={[styles.bookingId, { color: activeTheme.textSecondary }]}>
+        {/* Status Accent Bar at top edge */}
+        <View
+          style={[
+            styles.cardStatusAccentBar,
+            { backgroundColor: statusStyle.text || '#0084FF' },
+          ]}
+        />
+
+        {/* Top Header: ID Pill + Doorstep/Shop Badge + Status Badge */}
+        <View style={styles.bookingCardHeaderRow}>
+          <View style={styles.bookingCardIdGroup}>
+            <View style={[styles.bookingIdPill, { backgroundColor: activeTheme.tableHeaderBg }]}>
+              <MaterialCommunityIcons name="ticket-outline" size={12} color={activeTheme.textSecondary} />
+              <Text style={[styles.bookingIdPillText, { color: activeTheme.textSecondary }]} numberOfLines={1}>
                 {booking.bookingNumber}
               </Text>
-              <View
+            </View>
+
+            <View
+              style={[
+                styles.locationTypePillNew,
+                {
+                  backgroundColor: booking.locationType === 'doorstep' ? 'rgba(0,132,255,0.12)' : 'rgba(175,82,222,0.12)',
+                  borderColor: booking.locationType === 'doorstep' ? 'rgba(0,132,255,0.25)' : 'rgba(175,82,222,0.25)',
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={booking.locationType === 'doorstep' ? 'home-map-marker' : 'storefront-outline'}
+                size={11}
+                color={booking.locationType === 'doorstep' ? '#0084FF' : '#AF52DE'}
+              />
+              <Text
                 style={[
-                  styles.locationTypePill,
-                  { backgroundColor: booking.locationType === 'doorstep' ? 'rgba(0,132,255,0.12)' : 'rgba(175,82,222,0.12)' },
+                  styles.locationTypePillTextNew,
+                  { color: booking.locationType === 'doorstep' ? '#0084FF' : '#AF52DE' },
                 ]}
               >
-                <MaterialCommunityIcons
-                  name={booking.locationType === 'doorstep' ? 'home-map-marker' : 'storefront-outline'}
-                  size={11}
-                  color={booking.locationType === 'doorstep' ? '#0084FF' : '#AF52DE'}
-                />
-                <Text
-                  style={[
-                    styles.locationTypePillText,
-                    { color: booking.locationType === 'doorstep' ? '#0084FF' : '#AF52DE' },
-                  ]}
-                >
-                  {booking.locationType === 'doorstep' ? 'Doorstep' : 'At Shop'}
-                </Text>
-              </View>
+                {booking.locationType === 'doorstep' ? 'Doorstep' : 'At Shop'}
+              </Text>
             </View>
-            <Text style={[styles.bookingName, { color: activeTheme.textPrimary }]} numberOfLines={1}>
-              {booking.customerName}
-            </Text>
           </View>
 
-          <View style={[styles.bookingStatusBadge, { backgroundColor: statusStyle.bg }]}>
-            <Text style={[styles.bookingStatusText, { color: statusStyle.text }]}>
+          <View style={[styles.bookingStatusBadgeNew, { backgroundColor: statusStyle.bg }]}>
+            <View style={[styles.statusDotSmall, { backgroundColor: statusStyle.text }]} />
+            <Text style={[styles.bookingStatusTextNew, { color: statusStyle.text }]}>
               {statusStyle.label}
             </Text>
           </View>
         </View>
 
-        <View style={[styles.bookingDetails, { borderTopColor: activeTheme.cardBorder, borderBottomWidth: 0 }]}>
-          <View style={styles.detailItem}>
-            <MaterialCommunityIcons name="car-wash" size={16} color={activeTheme.textSecondary} />
-            <Text style={[styles.detailText, { color: activeTheme.textPrimary }]} numberOfLines={1}>
-              {booking.serviceName}
-            </Text>
+        {/* Customer Row */}
+        <View style={styles.customerRow}>
+          <View style={[styles.customerAvatar, { backgroundColor: activeTheme.activeNavBg }]}>
+            <MaterialCommunityIcons name="account" size={18} color={activeTheme.activeNavText} />
           </View>
-
-          <View style={styles.detailItem}>
-            <MaterialCommunityIcons name="calendar-clock" size={16} color={activeTheme.textSecondary} />
-            <Text style={[styles.detailText, { color: activeTheme.textPrimary }]} numberOfLines={1}>
-              {booking.date || 'TBD'} {booking.time ? `• ${booking.time}` : ''}
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={[styles.customerNameTitle, { color: activeTheme.textPrimary }]} numberOfLines={1}>
+              {booking.customerName}
             </Text>
-          </View>
-
-          <View style={styles.detailItem}>
-            <MaterialCommunityIcons name="cash-multiple" size={16} color="#30D158" />
-            <Text style={[styles.detailText, { color: '#30D158', fontWeight: '800' }]}>
-              {formatCurrency(booking.price)}
-            </Text>
-            <View
-              style={[
-                styles.payStatusChip,
-                { backgroundColor: booking.paymentStatus === 'PAID' ? 'rgba(48,209,88,0.15)' : 'rgba(255,214,10,0.15)' },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.payStatusChipText,
-                  { color: booking.paymentStatus === 'PAID' ? '#30D158' : activeTheme.statusPendingText },
-                ]}
-              >
-                {booking.paymentStatus}
+            {booking.customerPhone ? (
+              <Text style={[styles.customerSubText, { color: activeTheme.textSecondary }]}>
+                {booking.customerPhone}
               </Text>
-            </View>
+            ) : null}
           </View>
         </View>
 
-        <View style={styles.bookingActionsRow}>
+        {/* Inset Service & Price Box */}
+        <View
+          style={[
+            styles.serviceInsetBox,
+            {
+              backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.32)' : '#F8FAFC',
+              borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)',
+            },
+          ]}
+        >
+          {/* Service Name & Price Row */}
+          <View style={styles.servicePriceHeaderRow}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+              <MaterialCommunityIcons name="car-wash" size={16} color="#0084FF" />
+              <Text style={[styles.serviceNameBold, { color: activeTheme.textPrimary }]} numberOfLines={1}>
+                {booking.serviceName}
+              </Text>
+            </View>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text style={styles.priceHighlightText}>
+                {formatCurrency(booking.price)}
+              </Text>
+              <View
+                style={[
+                  styles.paymentStatusBadge,
+                  {
+                    backgroundColor:
+                      booking.paymentStatus === 'PAID'
+                        ? 'rgba(48,209,88,0.16)'
+                        : booking.paymentStatus === 'COD'
+                        ? 'rgba(255,149,0,0.16)'
+                        : 'rgba(255,214,10,0.16)',
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.paymentStatusBadgeText,
+                    {
+                      color:
+                        booking.paymentStatus === 'PAID'
+                          ? '#30D158'
+                          : booking.paymentStatus === 'COD'
+                          ? '#FF9500'
+                          : activeTheme.statusPendingText,
+                    },
+                  ]}
+                >
+                  {booking.paymentStatus}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Schedule Date & Time Row */}
+          <View style={styles.scheduleRow}>
+            <MaterialCommunityIcons name="calendar-clock" size={14} color={activeTheme.textSecondary} />
+            <Text style={[styles.scheduleDateText, { color: activeTheme.textSecondary }]} numberOfLines={1}>
+              {booking.date || 'TBD'} {booking.time ? `• ${booking.time}` : ''}
+            </Text>
+          </View>
+        </View>
+
+        {/* Card Actions Row */}
+        <View style={styles.distinctCardActionsRow}>
           <TouchableOpacity
             onPress={() => setQuickViewBooking(booking)}
-            style={[styles.quickViewButton, { borderColor: activeTheme.cardBorder }]}
+            style={[styles.quickViewButtonNew, { borderColor: activeTheme.cardBorder }]}
+            activeOpacity={0.7}
           >
             <MaterialCommunityIcons name="eye-outline" size={15} color={activeTheme.textSecondary} />
-            <Text style={[styles.quickViewButtonText, { color: activeTheme.textSecondary }]}>Details</Text>
+            <Text style={[styles.quickViewButtonTextNew, { color: activeTheme.textSecondary }]}>Details</Text>
           </TouchableOpacity>
 
           {isBusy ? (
             <ActivityIndicator size="small" color="#0084FF" style={{ marginLeft: 12 }} />
           ) : (
-            <View style={styles.actionButtonsGroup}>
+            <View style={styles.actionButtonsGroupNew}>
               {booking.status === 'pending' && (
                 <>
                   <TouchableOpacity
                     onPress={() => handleRejectBooking(booking)}
-                    style={[styles.actionBtn, styles.declineBtn]}
+                    style={[styles.distinctActionBtn, styles.declineBtnNew]}
+                    activeOpacity={0.8}
                   >
-                    <MaterialCommunityIcons name="close" size={14} color="#FF453A" />
-                    <Text style={[styles.actionBtnText, { color: '#FF453A' }]}>Reject</Text>
+                    <MaterialCommunityIcons name="close" size={15} color="#FF453A" />
+                    <Text style={[styles.distinctActionBtnText, { color: '#FF453A' }]}>Reject</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleAcceptBooking(booking)}
-                    style={[styles.actionBtn, styles.acceptBtn]}
+                    style={[styles.distinctActionBtn, styles.acceptBtnNew]}
+                    activeOpacity={0.8}
                   >
-                    <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />
-                    <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>Accept</Text>
+                    <MaterialCommunityIcons name="check" size={15} color="#FFFFFF" />
+                    <Text style={[styles.distinctActionBtnText, { color: '#FFFFFF' }]}>Accept</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -1512,17 +1573,19 @@ function ProviderAppContent() {
                 <>
                   <TouchableOpacity
                     onPress={() => handleRejectBooking(booking)}
-                    style={[styles.actionBtn, styles.declineBtn]}
+                    style={[styles.distinctActionBtn, styles.declineBtnNew]}
+                    activeOpacity={0.8}
                   >
-                    <MaterialCommunityIcons name="close" size={14} color="#FF453A" />
-                    <Text style={[styles.actionBtnText, { color: '#FF453A' }]}>Decline</Text>
+                    <MaterialCommunityIcons name="close" size={15} color="#FF453A" />
+                    <Text style={[styles.distinctActionBtnText, { color: '#FF453A' }]}>Decline</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleStartJob(booking)}
-                    style={[styles.actionBtn, styles.startJobBtn]}
+                    style={[styles.distinctActionBtn, styles.startJobBtnNew]}
+                    activeOpacity={0.8}
                   >
-                    <MaterialCommunityIcons name="play" size={14} color="#FFFFFF" />
-                    <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>Start Job</Text>
+                    <MaterialCommunityIcons name="play" size={15} color="#FFFFFF" />
+                    <Text style={[styles.distinctActionBtnText, { color: '#FFFFFF' }]}>Start Job</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -1531,17 +1594,19 @@ function ProviderAppContent() {
                 <>
                   <TouchableOpacity
                     onPress={() => handleCancelBooking(booking)}
-                    style={[styles.actionBtn, styles.declineBtn]}
+                    style={[styles.distinctActionBtn, styles.declineBtnNew]}
+                    activeOpacity={0.8}
                   >
-                    <MaterialCommunityIcons name="close" size={14} color="#FF453A" />
-                    <Text style={[styles.actionBtnText, { color: '#FF453A' }]}>Cancel</Text>
+                    <MaterialCommunityIcons name="close" size={15} color="#FF453A" />
+                    <Text style={[styles.distinctActionBtnText, { color: '#FF453A' }]}>Cancel</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleCompleteJob(booking)}
-                    style={[styles.actionBtn, styles.completeBtn]}
+                    style={[styles.distinctActionBtn, styles.completeBtnNew]}
+                    activeOpacity={0.8}
                   >
-                    <MaterialCommunityIcons name="check-all" size={14} color="#FFFFFF" />
-                    <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>Complete</Text>
+                    <MaterialCommunityIcons name="check-all" size={15} color="#FFFFFF" />
+                    <Text style={[styles.distinctActionBtnText, { color: '#FFFFFF' }]}>Complete</Text>
                   </TouchableOpacity>
                 </>
               )}
@@ -1550,23 +1615,25 @@ function ProviderAppContent() {
                 <>
                   <TouchableOpacity
                     onPress={() => handleShowQrModal(booking)}
-                    style={[styles.actionBtn, { backgroundColor: '#0084FF', borderColor: '#0070D8', marginRight: 6 }]}
+                    style={[styles.distinctActionBtn, { backgroundColor: '#0084FF', marginRight: 6 }]}
+                    activeOpacity={0.8}
                   >
-                    <MaterialCommunityIcons name="qrcode-scan" size={14} color="#FFFFFF" />
-                    <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>Show QR</Text>
+                    <MaterialCommunityIcons name="qrcode-scan" size={15} color="#FFFFFF" />
+                    <Text style={[styles.distinctActionBtnText, { color: '#FFFFFF' }]}>Show QR</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => handleMarkBookingPaid(booking)}
-                    style={[styles.actionBtn, { backgroundColor: '#10B981', borderColor: '#059669', marginRight: 6 }]}
+                    style={[styles.distinctActionBtn, { backgroundColor: '#10B981', marginRight: 6 }]}
+                    activeOpacity={0.8}
                   >
-                    <MaterialCommunityIcons name="cash-check" size={14} color="#FFFFFF" />
-                    <Text style={[styles.actionBtnText, { color: '#FFFFFF' }]}>Mark Paid</Text>
+                    <MaterialCommunityIcons name="cash-check" size={15} color="#FFFFFF" />
+                    <Text style={[styles.distinctActionBtnText, { color: '#FFFFFF' }]}>Mark Paid</Text>
                   </TouchableOpacity>
                 </>
               )}
 
               {(booking.status === 'completed' || booking.status === 'rejected' || booking.status === 'cancelled') && (
-                <View style={[styles.doneTag, { backgroundColor: activeTheme.tableHeaderBg }]}>
+                <View style={[styles.doneTagNew, { backgroundColor: activeTheme.tableHeaderBg }]}>
                   <MaterialCommunityIcons
                     name={booking.status === 'completed' ? 'check-decagram' : 'close-circle-outline'}
                     size={14}
@@ -1574,7 +1641,7 @@ function ProviderAppContent() {
                   />
                   <Text
                     style={[
-                      styles.doneTagText,
+                      styles.doneTagTextNew,
                       { color: booking.status === 'completed' ? '#30D158' : '#FF453A' },
                     ]}
                   >
@@ -1942,11 +2009,7 @@ function ProviderAppContent() {
               </Text>
             </GlassCard>
           ) : (
-            filteredBookings.map((booking) => (
-              <GlassCard key={booking.id} theme={theme} style={styles.bookingCard} intensity={activeTheme.glassIntensity}>
-                {renderBookingCard(booking, false)}
-              </GlassCard>
-            ))
+            filteredBookings.map((booking) => renderBookingCard(booking, false))
           )}
         </View>
       </View>
@@ -6559,6 +6622,215 @@ const styles = StyleSheet.create({
     padding: 32,
     alignItems: 'center',
     borderRadius: 16,
+  },
+  // Distinct Individual Booking Card Styles
+  distinctBookingCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 14,
+    marginBottom: 14,
+    overflow: 'hidden',
+    position: 'relative',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.22,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+  cardStatusAccentBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+  },
+  bookingCardHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+    marginTop: 2,
+  },
+  bookingCardIdGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+    gap: 6,
+  },
+  bookingIdPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 4,
+  },
+  bookingIdPillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
+  locationTypePillNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    gap: 3,
+  },
+  locationTypePillTextNew: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  bookingStatusBadgeNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 9,
+    borderRadius: 8,
+    gap: 5,
+  },
+  statusDotSmall: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  bookingStatusTextNew: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.4,
+  },
+  customerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  customerAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  customerNameTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  customerSubText: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 1,
+  },
+  serviceInsetBox: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 10,
+    marginBottom: 12,
+  },
+  servicePriceHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  serviceNameBold: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginLeft: 6,
+  },
+  priceHighlightText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#30D158',
+    marginRight: 6,
+  },
+  paymentStatusBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
+  },
+  paymentStatusBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  scheduleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  scheduleDateText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  distinctCardActionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  quickViewButtonNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 11,
+    borderRadius: 10,
+    borderWidth: 1,
+    gap: 4,
+  },
+  quickViewButtonTextNew: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  actionButtonsGroupNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  distinctActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    gap: 5,
+  },
+  distinctActionBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  acceptBtnNew: {
+    backgroundColor: '#30D158',
+  },
+  declineBtnNew: {
+    backgroundColor: 'rgba(255, 69, 58, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 69, 58, 0.3)',
+  },
+  startJobBtnNew: {
+    backgroundColor: '#0084FF',
+  },
+  completeBtnNew: {
+    backgroundColor: '#30D158',
+  },
+  doneTagNew: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    gap: 4,
+  },
+  doneTagTextNew: {
+    fontSize: 11,
+    fontWeight: '700',
   },
   bookingCard: {
     padding: 14,
