@@ -5,6 +5,7 @@ const projectRoot = path.resolve(__dirname, '..');
 const androidAppDir = path.join(projectRoot, 'android', 'app');
 const buildGradlePath = path.join(androidAppDir, 'build.gradle');
 const mainAppPath = path.join(androidAppDir, 'src', 'main', 'java', 'com', 'serveasy', 'provider', 'MainApplication.kt');
+const manifestPath = path.join(androidAppDir, 'src', 'main', 'AndroidManifest.xml');
 const assetsDir = path.join(androidAppDir, 'src', 'main', 'assets');
 const sourceKeystore = path.join(projectRoot, 'credentials', 'release.keystore');
 const targetKeystore = path.join(androidAppDir, 'release.keystore');
@@ -102,5 +103,20 @@ if (fs.existsSync(mainAppPath)) {
     console.log('[configure-release-build] Successfully patched MainApplication.kt: useDevSupport = BuildConfig.DEBUG');
   } else {
     console.log('[configure-release-build] Target block in MainApplication.kt already patched or modified.');
+  }
+}
+
+// 5. Ensure UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY is in AndroidManifest.xml
+if (fs.existsSync(manifestPath)) {
+  let manifest = fs.readFileSync(manifestPath, 'utf8');
+  if (!manifest.includes('UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY')) {
+    manifest = manifest.replace(
+      '</application>',
+      '    <meta-data android:name="expo.modules.updates.UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY" android:value="{&quot;expo-channel-name&quot;:&quot;preview&quot;}"/>\n  </application>'
+    );
+    fs.writeFileSync(manifestPath, manifest, 'utf8');
+    console.log('[configure-release-build] Injected UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY into AndroidManifest.xml');
+  } else {
+    console.log('[configure-release-build] UPDATES_CONFIGURATION_REQUEST_HEADERS_KEY already present in AndroidManifest.xml');
   }
 }

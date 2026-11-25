@@ -56,7 +56,10 @@
     "updates": {
       "url": "https://u.expo.dev/fc1a7de7-01d6-47ae-8bd8-66afc8dfade4",
       "checkAutomatically": "ON_LOAD",
-      "fallbackToCacheTimeout": 5000
+      "fallbackToCacheTimeout": 5000,
+      "requestHeaders": {
+        "expo-channel-name": "preview"
+      }
     },
     "runtimeVersion": {
       "policy": "appVersion"
