@@ -9,45 +9,54 @@ interface ProudMadeInIndiaFooterProps {
 }
 
 /**
- * Bottom-of-Overview signature overlaying "Proudly Made in India by S.S.R"
- * directly over a copyright-free panoramic Indian architectural skyline.
+ * Bottom-of-Overview "Proudly Made in India by S.S.R" section.
+ * Text sits cleanly ABOVE the architectural skyline (Rapido-style),
+ * with the line-art rendered below it at reduced opacity.
  */
 export const ProudMadeInIndiaFooter: React.FC<ProudMadeInIndiaFooterProps> = ({ theme }) => {
   const isDark = theme === 'dark';
-  const primaryInk = isDark ? 'rgba(255, 255, 255, 0.94)' : '#0F172A';
-  const secondaryInk = isDark ? 'rgba(255, 255, 255, 0.78)' : '#334155';
-  const authorInk = isDark ? 'rgba(255, 255, 255, 0.88)' : '#1E293B';
-  const skylineTint = isDark ? 'rgba(255, 255, 255, 0.19)' : 'rgba(15, 23, 42, 0.17)';
-  const haloColor = isDark ? 'rgba(8, 9, 12, 0.92)' : 'rgba(235, 245, 255, 0.95)';
+
+  // Text colors
+  const proudlyColor  = isDark ? 'rgba(200,210,230,0.75)' : '#64748B';
+  const indiaColor    = isDark ? '#FFFFFF'                 : '#0F172A';
+  const authorColor   = isDark ? 'rgba(200,210,230,0.70)' : '#475569';
+
+  // Skyline tint — subtle so it stays in the background
+  const skylineTint = isDark
+    ? 'rgba(255,255,255,0.14)'
+    : 'rgba(30,41,59,0.13)';
+
+  // Divider line
+  const dividerColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.09)';
 
   return (
     <View style={styles.container}>
-      <View style={styles.skylineWrap}>
-        <Image
-          source={INDIA_SKYLINE_IMAGE}
-          style={[styles.skylineImage, { tintColor: skylineTint }]}
-          resizeMode="contain"
-        />
+      {/* Thin divider line */}
+      <View style={[styles.divider, { backgroundColor: dividerColor }]} />
 
-        <View style={styles.overlayTextBlock} pointerEvents="none">
-          <Text style={[styles.proudlyText, { color: secondaryInk, textShadowColor: haloColor }]}>
-            Proudly Made
-          </Text>
-
-          <View style={styles.indiaRow}>
-            <Text style={[styles.indiaText, { color: primaryInk, textShadowColor: haloColor }]}>
-              in India
-            </Text>
-            <View style={styles.heartBadge}>
-              <MaterialCommunityIcons name="heart" size={14} color="#FFB800" />
-            </View>
-          </View>
-
-          <Text style={[styles.authorText, { color: authorInk, textShadowColor: haloColor }]}>
-            by S.S.R
-          </Text>
+      {/* Text block — above the skyline */}
+      <View style={styles.textBlock}>
+        <Text style={[styles.proudlyText, { color: proudlyColor }]}>
+          Proudly made
+        </Text>
+        <View style={styles.indiaRow}>
+          <Text style={[styles.indiaText, { color: indiaColor }]}>in India</Text>
+          <MaterialCommunityIcons
+            name="circle-small"
+            size={22}
+            color="#FF9933"
+            style={styles.dotIcon}
+          />
         </View>
+        <Text style={[styles.authorText, { color: authorColor }]}>by S.S.R</Text>
       </View>
+
+      {/* Skyline image — below text, as a visual watermark */}
+      <Image
+        source={INDIA_SKYLINE_IMAGE}
+        style={[styles.skylineImage, { tintColor: skylineTint }]}
+        resizeMode="cover"
+      />
     </View>
   );
 };
@@ -55,62 +64,51 @@ export const ProudMadeInIndiaFooter: React.FC<ProudMadeInIndiaFooterProps> = ({ 
 const styles = StyleSheet.create({
   container: {
     marginTop: 'auto',
-    paddingTop: 20,
+    paddingTop: 8,
     marginBottom: -24,
     marginHorizontal: -16,
     alignItems: 'center',
+    overflow: 'hidden',
   },
-  skylineWrap: {
-    width: '100%',
-    height: 165,
-    position: 'relative',
-    justifyContent: 'center',
+  divider: {
+    width: '80%',
+    height: 1,
+    marginBottom: 14,
+    borderRadius: 1,
+  },
+  textBlock: {
     alignItems: 'center',
-  },
-  skylineImage: {
-    width: '100%',
-    height: '100%',
-  },
-  overlayTextBlock: {
-    position: 'absolute',
-    top: '18%',
-    left: 0,
-    right: 0,
-    alignItems: 'center',
+    marginBottom: 10,
     paddingHorizontal: 16,
-    zIndex: 2,
   },
   proudlyText: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 8,
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0.4,
   },
   indiaRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 1,
   },
   indiaText: {
-    fontSize: 25,
-    fontWeight: '900',
-    letterSpacing: -0.4,
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 10,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
-  heartBadge: {
-    marginLeft: 3,
-    marginTop: 2,
-    transform: [{ rotate: '12deg' }],
+  dotIcon: {
+    marginLeft: 1,
+    marginTop: 1,
   },
   authorText: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1.3,
-    marginTop: 3,
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 8,
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1.6,
+    marginTop: 1,
+    textTransform: 'uppercase',
+  },
+  skylineImage: {
+    width: '100%',
+    height: 160,
   },
 });

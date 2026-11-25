@@ -3547,7 +3547,14 @@ function ProviderAppContent() {
           {/* TOP BAR / HEADER */}
           <View style={[styles.headerContainer, { borderBottomWidth: 0, backgroundColor: 'transparent' }]}>
             <View style={[styles.headerLeft, { marginLeft: isMobile ? 0 : (sidebarExpanded ? 180 : 64) }]}>
-              <Image source={require('./assets/logo.png')} style={styles.headerLogoImage} />
+              <TouchableOpacity
+                onPress={() => setActiveSection('dashboard')}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityLabel="Go to Overview"
+              >
+                <Image source={require('./assets/logo.png')} style={styles.headerLogoImage} />
+              </TouchableOpacity>
             </View>
 
             <View style={styles.headerRight}>
