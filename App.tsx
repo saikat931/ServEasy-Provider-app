@@ -195,6 +195,17 @@ function ProviderAppContent() {
   const activeRingingBookingIdRef = useRef<number | string | null>(null);
   const handledBookingIdsRef = useRef<Set<number>>(new Set());
 
+  // Provider Online / Off Duty Toggle + Bottom-Slide Confirmation Sheet States
+  const [isOnDuty, setIsOnDuty] = useState<boolean>(true);
+  const isOnDutyRef = useRef<boolean>(true);
+  const [offDutySheetVisible, setOffDutySheetVisible] = useState<boolean>(false);
+  const offDutySheetAnim = useRef(new Animated.Value(400)).current;
+  const offDutyBackdropAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    isOnDutyRef.current = isOnDuty;
+  }, [isOnDuty]);
+
   // Site Service Charge Dues State
   const [serviceChargeDue, setServiceChargeDue] = useState(0);
   const [walletBalance, setWalletBalance] = useState(0);
@@ -371,7 +382,8 @@ function ProviderAppContent() {
       addServiceModalVisible ||
       bankModalVisible ||
       companyModalVisible ||
-      branchModalVisible;
+      branchModalVisible ||
+      offDutySheetVisible;
   }, [
     authModalVisible,
     logoutModalVisible,
@@ -380,14 +392,109 @@ function ProviderAppContent() {
     bankModalVisible,
     companyModalVisible,
     branchModalVisible,
+    offDutySheetVisible,
   ]);
+
+  // Active Provider ID in use (null if not logged in)
+  const activeProviderId = providerUser?.id || null;
+
+  // Load persisted On/Off Duty status whenever provider logs in
+  useEffect(() => {
+    if (!activeProviderId) return;
+    let mounted = true;
+    AsyncStorage.getItem(`serveasy_provider_duty_${activeProviderId}`)
+      .then((val) => {
+        if (!mounted || val === null) return;
+        const duty = val !== '0';
+        setIsOnDuty(duty);
+        isOnDutyRef.current = duty;
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, [activeProviderId]);
+
+  const openOffDutySheet = () => {
+    offDutySheetAnim.setValue(400);
+    offDutyBackdropAnim.setValue(0);
+    setOffDutySheetVisible(true);
+    Animated.parallel([
+      Animated.timing(offDutyBackdropAnim, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: true,
+      }),
+      Animated.spring(offDutySheetAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        damping: 22,
+        mass: 0.85,
+        stiffness: 200,
+      }),
+    ]).start();
+  };
+
+  const closeOffDutySheet = (afterClose?: () => void) => {
+    Animated.parallel([
+      Animated.timing(offDutyBackdropAnim, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(offDutySheetAnim, {
+        toValue: 400,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setOffDutySheetVisible(false);
+      afterClose?.();
+    });
+  };
+
+  const handleDutyTogglePress = () => {
+    if (isOnDuty) {
+      openOffDutySheet();
+    } else {
+      setIsOnDuty(true);
+      isOnDutyRef.current = true;
+      if (activeProviderId) {
+        AsyncStorage.setItem(`serveasy_provider_duty_${activeProviderId}`, '1').catch(() => {});
+      }
+      setLiveToast({
+        id: Date.now(),
+        title: '🟢 You are Online (On Duty)',
+        message: 'Live booking alerts and incoming ringtones are now active.',
+        type: 'success',
+      });
+    }
+  };
+
+  const confirmGoOffDuty = () => {
+    closeOffDutySheet(() => {
+      setIsOnDuty(false);
+      isOnDutyRef.current = false;
+      if (activeProviderId) {
+        AsyncStorage.setItem(`serveasy_provider_duty_${activeProviderId}`, '0').catch(() => {});
+      }
+      try {
+        Vibration.cancel();
+        RingtoneService.stopRinging();
+      } catch (_) {}
+      activeRingingBookingIdRef.current = null;
+      setLiveToast({
+        id: Date.now(),
+        title: '⏸️ You are Off Duty (Offline)',
+        message: 'Incoming booking ringtones and instant job alerts are paused.',
+        type: 'warning',
+      });
+    });
+  };
 
   // Reference to track last SSE event ID to avoid duplicate alerts
   const lastEventIdRef = useRef<number>(0);
   const pollerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Active Provider ID in use (null if not logged in)
-  const activeProviderId = providerUser?.id || null;
 
   // Check stored login on mount
   useEffect(() => {
@@ -526,6 +633,11 @@ function ProviderAppContent() {
           let toastType: 'success' | 'info' | 'warning' = 'info';
 
           if (latestEvent.event_name === 'booking.created') {
+            if (!isOnDutyRef.current) {
+              // Off Duty: silently sync booking list without ringing, vibrating, or auto-redirecting
+              loadLiveData(false);
+              return;
+            }
             toastTitle = '🔔 New Booking Alert!';
             toastMsg = `New booking ${bNumber} received from ${latestEvent.payload?.customer_name || 'Customer'}!`;
             toastType = 'success';
@@ -3786,41 +3898,103 @@ function ProviderAppContent() {
                 />
               }
             >
-              <View style={styles.sectionHeaderRow}>
-                <View>
-                  <Text style={[styles.sectionTitle, { color: activeTheme.textPrimary }]}>
-                    {activeSection === 'dashboard' && (providerUser ? 'Provider Dashboard' : 'Partner Benefits')}
-                    {activeSection === 'services' && 'My Services'}
-                    {activeSection === 'bookings' && 'Live Bookings Manager'}
-                    {activeSection === 'wallet' && 'My Wallet & Payouts'}
-                    {activeSection === 'profile' && 'My Account & Profile'}
-                    {activeSection === 'verification' && 'ID Verification'}
-                  </Text>
-                  <Text style={[styles.providerSubHeader, { color: activeTheme.textSecondary }]}>
-                    {providerUser
-                      ? `${profileData?.company_name || profileData?.full_name || providerUser.first_name} • Provider #${activeProviderId}`
-                      : 'Join the ServEasy Service Provider Network'}
-                  </Text>
-                </View>
+              {activeSection === 'dashboard' && providerUser ? (
+                <View style={styles.sectionHeaderRow}>
+                  {/* Provider Online / Offline Toggle Button */}
+                  <TouchableOpacity
+                    onPress={handleDutyTogglePress}
+                    activeOpacity={0.8}
+                    accessibilityRole="switch"
+                    accessibilityState={{ checked: isOnDuty }}
+                    accessibilityLabel={isOnDuty ? 'Provider Online, tap to go Off Duty' : 'Provider Offline, tap to go On Duty'}
+                    style={[
+                      styles.dutyTogglePill,
+                      {
+                        backgroundColor: isOnDuty
+                          ? 'rgba(48, 209, 88, 0.14)'
+                          : (theme === 'dark' ? 'rgba(255, 69, 58, 0.12)' : 'rgba(239, 68, 68, 0.10)'),
+                        borderColor: isOnDuty
+                          ? 'rgba(48, 209, 88, 0.48)'
+                          : (theme === 'dark' ? 'rgba(255, 69, 58, 0.38)' : 'rgba(239, 68, 68, 0.35)'),
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.dutyStatusDot,
+                        { backgroundColor: isOnDuty ? '#30D158' : '#FF453A' },
+                      ]}
+                    />
+                    <Text
+                      style={[
+                        styles.dutyToggleLabel,
+                        { color: isOnDuty ? '#30D158' : '#FF453A' },
+                      ]}
+                    >
+                      {isOnDuty ? 'ON DUTY • ONLINE' : 'OFF DUTY • OFFLINE'}
+                    </Text>
+                    <View
+                      style={[
+                        styles.dutySwitchTrack,
+                        {
+                          backgroundColor: isOnDuty
+                            ? '#30D158'
+                            : (theme === 'dark' ? 'rgba(255,255,255,0.16)' : 'rgba(15,23,42,0.16)'),
+                          justifyContent: isOnDuty ? 'flex-end' : 'flex-start',
+                        },
+                      ]}
+                    >
+                      <View style={styles.dutySwitchThumb} />
+                    </View>
+                  </TouchableOpacity>
 
-                {/* Fast Sync Button if logged in, or Sign In button if logged out */}
-                {providerUser ? (
+                  {/* Fast Sync Button */}
                   <TouchableOpacity
                     onPress={() => loadLiveData(true)}
                     style={[styles.syncButtonTop, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}
+                    accessibilityRole="button"
+                    accessibilityLabel="Sync Live Data"
                   >
                     <MaterialCommunityIcons name="sync" size={16} color={activeTheme.iconColor} />
                   </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    onPress={() => setAuthModalVisible(true)}
-                    style={[styles.topHeaderSignInBtn, { backgroundColor: '#0084FF' }]}
-                  >
-                    <MaterialCommunityIcons name="login" size={14} color="#FFFFFF" />
-                    <Text style={styles.topHeaderSignInBtnText}>Sign In</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+                </View>
+              ) : (
+                <View style={styles.sectionHeaderRow}>
+                  <View>
+                    <Text style={[styles.sectionTitle, { color: activeTheme.textPrimary }]}>
+                      {activeSection === 'dashboard' && 'Partner Benefits'}
+                      {activeSection === 'services' && 'My Services'}
+                      {activeSection === 'bookings' && 'Live Bookings Manager'}
+                      {activeSection === 'wallet' && 'My Wallet & Payouts'}
+                      {activeSection === 'profile' && 'My Account & Profile'}
+                      {activeSection === 'verification' && 'ID Verification'}
+                    </Text>
+                    <Text style={[styles.providerSubHeader, { color: activeTheme.textSecondary }]}>
+                      {providerUser
+                        ? `${profileData?.company_name || profileData?.full_name || providerUser.first_name} • Provider #${activeProviderId}`
+                        : 'Join the ServEasy Service Provider Network'}
+                    </Text>
+                  </View>
+
+                  {/* Fast Sync Button if logged in, or Sign In button if logged out */}
+                  {providerUser ? (
+                    <TouchableOpacity
+                      onPress={() => loadLiveData(true)}
+                      style={[styles.syncButtonTop, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}
+                    >
+                      <MaterialCommunityIcons name="sync" size={16} color={activeTheme.iconColor} />
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      onPress={() => setAuthModalVisible(true)}
+                      style={[styles.topHeaderSignInBtn, { backgroundColor: '#0084FF' }]}
+                    >
+                      <MaterialCommunityIcons name="login" size={14} color="#FFFFFF" />
+                      <Text style={styles.topHeaderSignInBtnText}>Sign In</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
 
               {/* SECTION: DASHBOARD */}
               {activeSection === 'dashboard' && (
@@ -6071,6 +6245,105 @@ function ProviderAppContent() {
           onClose={() => setRingtoneSettingsModalVisible(false)}
           theme={theme}
         />
+
+        {/* BOTTOM SLIDE SHEET: CONFIRM GO OFF DUTY */}
+        <Modal
+          animationType="none"
+          transparent={true}
+          statusBarTranslucent={true}
+          visible={offDutySheetVisible}
+          onRequestClose={() => closeOffDutySheet()}
+        >
+          <View style={styles.bottomSheetRoot}>
+            <Animated.View
+              style={[
+                styles.bottomSheetBackdrop,
+                { opacity: offDutyBackdropAnim },
+              ]}
+            >
+              <TouchableOpacity
+                style={StyleSheet.absoluteFill}
+                activeOpacity={1}
+                onPress={() => closeOffDutySheet()}
+              />
+            </Animated.View>
+
+            <Animated.View
+              style={[
+                styles.bottomSheetCard,
+                {
+                  backgroundColor: theme === 'dark' ? '#13161E' : '#FFFFFF',
+                  borderColor: theme === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(15,23,42,0.10)',
+                  paddingBottom: Math.max(insets.bottom, 16) + 12,
+                  transform: [{ translateY: offDutySheetAnim }],
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.bottomSheetHandle,
+                  { backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.22)' : 'rgba(15,23,42,0.18)' },
+                ]}
+              />
+
+              <View style={styles.offDutyIconBadge}>
+                <MaterialCommunityIcons name="power-standby" size={28} color="#FF453A" />
+              </View>
+
+              <Text style={[styles.offDutySheetTitle, { color: activeTheme.textPrimary }]}>
+                Go Off Duty?
+              </Text>
+
+              <Text style={[styles.offDutySheetBody, { color: activeTheme.textSecondary }]}>
+                Are you sure you want to go offline? You won’t receive live booking ringtones or instant job alerts while Off Duty.
+              </Text>
+
+              {activeInProgressJob && (
+                <View
+                  style={[
+                    styles.offDutyWarningPill,
+                    {
+                      backgroundColor: 'rgba(245, 158, 11, 0.12)',
+                      borderColor: 'rgba(245, 158, 11, 0.35)',
+                    },
+                  ]}
+                >
+                  <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#F59E0B" />
+                  <Text style={styles.offDutyWarningText}>
+                    Active job #{activeInProgressJob.bookingNumber} is still in progress.
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.offDutyActionsRow}>
+                <TouchableOpacity
+                  onPress={() => closeOffDutySheet()}
+                  activeOpacity={0.8}
+                  style={[
+                    styles.offDutyStayBtn,
+                    {
+                      backgroundColor: activeTheme.tableHeaderBg,
+                      borderColor: activeTheme.cardBorder,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.offDutyStayBtnText, { color: activeTheme.textPrimary }]}>
+                    Stay Online
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={confirmGoOffDuty}
+                  activeOpacity={0.85}
+                  style={styles.offDutyConfirmBtn}
+                >
+                  <MaterialCommunityIcons name="power" size={17} color="#FFFFFF" />
+                  <Text style={styles.offDutyConfirmBtnText}>Yes, Go Off Duty</Text>
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          </View>
+        </Modal>
       </View>
   );
 }
@@ -9059,5 +9332,142 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
+  },
+  dutyTogglePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 7,
+    paddingLeft: 12,
+    paddingRight: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    gap: 8,
+  },
+  dutyStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  dutyToggleLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+  },
+  dutySwitchTrack: {
+    width: 38,
+    height: 22,
+    borderRadius: 11,
+    padding: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dutySwitchThumb: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+  },
+  bottomSheetRoot: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  bottomSheetBackdrop: {
+    ...(StyleSheet.absoluteFill as any),
+    backgroundColor: 'rgba(0, 0, 0, 0.62)',
+  },
+  bottomSheetCard: {
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    paddingTop: 12,
+    paddingHorizontal: 22,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 20,
+  },
+  bottomSheetHandle: {
+    width: 42,
+    height: 4,
+    borderRadius: 2,
+    marginBottom: 18,
+  },
+  offDutyIconBadge: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: 'rgba(255, 69, 58, 0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 69, 58, 0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  offDutySheetTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  offDutySheetBody: {
+    fontSize: 13.5,
+    lineHeight: 20,
+    textAlign: 'center',
+    marginBottom: 18,
+    paddingHorizontal: 6,
+  },
+  offDutyWarningPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 18,
+    width: '100%',
+  },
+  offDutyWarningText: {
+    color: '#F59E0B',
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
+  },
+  offDutyActionsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  offDutyStayBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  offDutyStayBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  offDutyConfirmBtn: {
+    flex: 1.15,
+    flexDirection: 'row',
+    gap: 7,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: '#FF453A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  offDutyConfirmBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
   },
 });
