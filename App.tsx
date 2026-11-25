@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   StatusBar,
   StyleSheet,
@@ -36,6 +36,7 @@ import { RingtoneService } from './src/services/RingtoneService';
 import { NotificationService } from './src/services/NotificationService';
 import { GreetingWeatherCard } from './src/components/GreetingWeatherCard';
 import { ProudMadeInIndiaFooter } from './src/components/ProudMadeInIndiaFooter';
+import { EarningsAnalyseSection } from './src/components/EarningsAnalyseSection';
 import {
   ProviderBooking,
   ProviderServiceItem,
@@ -96,7 +97,7 @@ interface ToastNotice {
   title: string;
   message: string;
   type: 'success' | 'info' | 'warning';
-  actionTab?: 'dashboard' | 'services' | 'bookings' | 'wallet' | 'profile' | 'verification';
+  actionTab?: 'dashboard' | 'services' | 'bookings' | 'wallet' | 'profile' | 'verification' | 'earnings';
   isLiveBooking?: boolean;
   bookingId?: number;
 }
@@ -132,8 +133,8 @@ function ProviderAppContent() {
   // Sidebar state: collapsed or expanded (only used on tablet/desktop)
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
 
-  // Active navigation section: 'dashboard', 'services', 'bookings', 'wallet', 'profile', 'verification'
-  const [activeSection, setActiveSection] = useState<'dashboard' | 'services' | 'bookings' | 'wallet' | 'profile' | 'verification'>('dashboard');
+  // Active navigation section: 'dashboard', 'services', 'bookings', 'wallet', 'profile', 'verification', 'earnings'
+  const [activeSection, setActiveSection] = useState<'dashboard' | 'services' | 'bookings' | 'wallet' | 'profile' | 'verification' | 'earnings'>('dashboard');
 
   // Mobile Right Sidebar Drawer State & Smooth Slide Animation
   const [rightSidebarVisible, setRightSidebarVisible] = useState(false);
@@ -819,6 +820,28 @@ function ProviderAppContent() {
   const completedBookings = bookings.filter((b) => b.status === 'completed');
   const totalRevenue = profileData?.stats?.total_sales ?? serverStats?.total_sales ?? (serverStats?.sales ? parseFloat(String(serverStats.sales).replace(/[^0-9.]/g, '')) : completedBookings.reduce((sum, b) => sum + (Number(b.price) || 0), 0));
   const pendingCount = bookings.filter((b) => b.status === 'pending').length;
+
+  // Real-time Today's Earnings and Weekly Goal calculated from bookings
+  const todayEarnings = useMemo(() => {
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    return completedBookings
+      .filter((b) => (b.date && b.date.startsWith(todayStr)) || (b.completedAt && b.completedAt.startsWith(todayStr)))
+      .reduce((sum, b) => sum + (Number(b.price) || 0), 0);
+  }, [completedBookings]);
+
+  const weeklyGoalPercent = useMemo(() => {
+    const target = 5000;
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thisWeekEarned = completedBookings
+      .filter((b) => {
+        const d = b.completedAt ? new Date(b.completedAt) : b.date ? new Date(b.date) : null;
+        return d && d >= weekAgo;
+      })
+      .reduce((sum, b) => sum + (Number(b.price) || 0), 0);
+    return Math.min(Math.round((thisWeekEarned / target) * 100), 100);
+  }, [completedBookings]);
 
   // ─── Phone Notification Bar Alerts for Pending Bookings (When App Closed/Backgrounded) ─
   const pendingCountRef = useRef(pendingCount);
@@ -1986,6 +2009,46 @@ function ProviderAppContent() {
           addressHint={formAddress || profileData?.location_address}
           refreshTrigger={weatherRefreshNonce}
         />
+
+        {/* Business Earnings & Cashflow Snapshot Strip (Matches Rapido / Partner Mockup) */}
+        <GlassCard
+          theme={theme}
+          intensity={activeTheme.glassIntensity}
+          style={[
+            styles.earningsStripCard,
+            {
+              backgroundColor: theme === 'dark' ? 'rgba(15, 20, 28, 0.72)' : 'rgba(255, 255, 255, 0.85)',
+              borderColor: activeTheme.cardBorder,
+            },
+          ]}
+        >
+          <View style={styles.earningsStripContent}>
+            <View style={styles.earningsStripTextRow}>
+              <Text style={[styles.earningsStripItemText, { color: activeTheme.textSecondary }]}>
+                Today: <Text style={{ color: '#30D158', fontWeight: '800' }}>₹{todayEarnings.toFixed(0)}</Text>
+              </Text>
+              <Text style={[styles.earningsStripBullet, { color: activeTheme.textSecondary }]}>•</Text>
+              <Text style={[styles.earningsStripItemText, { color: activeTheme.textSecondary }]}>
+                Wallet: <Text style={{ color: activeTheme.textPrimary, fontWeight: '800' }}>₹{walletBalance.toFixed(0)}</Text>
+              </Text>
+              <Text style={[styles.earningsStripBullet, { color: activeTheme.textSecondary }]}>•</Text>
+              <Text style={[styles.earningsStripItemText, { color: activeTheme.textSecondary }]}>
+                Weekly Goal <Text style={{ color: '#0084FF', fontWeight: '800' }}>{weeklyGoalPercent}%</Text>
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => setActiveSection('earnings')}
+              style={styles.earningsAnalyseBtn}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Analyse Earnings"
+            >
+              <MaterialCommunityIcons name="chart-timeline-variant" size={14} color="#FFFFFF" style={{ marginRight: 4 }} />
+              <Text style={styles.earningsAnalyseBtnText}>Analyse</Text>
+            </TouchableOpacity>
+          </View>
+        </GlassCard>
 
         {/* Live GPS Broadcasting Card for In-Progress Jobs */}
         {activeInProgressJob && (
@@ -3839,6 +3902,22 @@ function ProviderAppContent() {
                   </TouchableOpacity>
 
                   <TouchableOpacity
+                    onPress={() => setActiveSection('earnings')}
+                    style={[styles.navItem, activeSection === 'earnings' && { backgroundColor: activeTheme.activeNavBg }]}
+                  >
+                    <MaterialCommunityIcons
+                      name="chart-timeline-variant"
+                      size={22}
+                      color={activeSection === 'earnings' ? activeTheme.activeNavText : activeTheme.textSecondary}
+                    />
+                    {sidebarExpanded && (
+                      <Text style={[styles.navText, { color: activeSection === 'earnings' ? activeTheme.activeNavText : activeTheme.textSecondary }]}>
+                        Earnings
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
                     onPress={() => setActiveSection('profile')}
                     style={[styles.navItem, activeSection === 'profile' && { backgroundColor: activeTheme.activeNavBg }]}
                   >
@@ -3966,6 +4045,7 @@ function ProviderAppContent() {
                       {activeSection === 'services' && 'My Services'}
                       {activeSection === 'bookings' && 'Live Bookings Manager'}
                       {activeSection === 'wallet' && 'My Wallet & Payouts'}
+                      {activeSection === 'earnings' && 'Earnings Overview'}
                       {activeSection === 'profile' && 'My Account & Profile'}
                       {activeSection === 'verification' && 'ID Verification'}
                     </Text>
@@ -4128,6 +4208,22 @@ function ProviderAppContent() {
               {/* SECTION: MY WALLET & PAYOUTS */}
               {activeSection === 'wallet' && (
                 providerUser ? renderWalletPayoutsSection() : renderLockedState('My Wallet & Payouts', 'Sign in to access your earnings, wallet balance, and payout bank account.')
+              )}
+
+              {/* SECTION: EARNINGS ANALYTICS & OVERVIEW */}
+              {activeSection === 'earnings' && (
+                providerUser ? (
+                  <EarningsAnalyseSection
+                    theme={theme}
+                    bookings={bookings}
+                    walletBalance={walletBalance}
+                    totalRevenue={totalRevenue}
+                    onNavigateBack={() => setActiveSection('dashboard')}
+                    onOpenWallet={() => setActiveSection('wallet')}
+                  />
+                ) : (
+                  renderLockedState('Earnings Overview', 'Sign in to view your complete day, week, month, and annual earnings analytics.')
+                )
               )}
 
               {/* SECTION: MY ACCOUNT & PROFILE */}
@@ -4557,6 +4653,54 @@ function ProviderAppContent() {
                     name="chevron-right"
                     size={18}
                     color={activeSection === 'wallet' ? '#0084FF' : activeTheme.textSecondary}
+                  />
+                </TouchableOpacity>
+
+                {/* 4b. Earnings Overview & Analytics */}
+                <TouchableOpacity
+                  style={[
+                    styles.drawerMenuItem,
+                    activeSection === 'earnings' && [styles.drawerMenuItemActive, { backgroundColor: activeTheme.activeNavBg }],
+                  ]}
+                  onPress={() => {
+                    setActiveSection('earnings');
+                    closeRightDrawer();
+                  }}
+                >
+                  <View
+                    style={[
+                      styles.drawerMenuIconBox,
+                      {
+                        backgroundColor: activeSection === 'earnings' ? '#30D158' : activeTheme.tableHeaderBg,
+                      },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="chart-timeline-variant"
+                      size={20}
+                      color={activeSection === 'earnings' ? '#FFFFFF' : '#30D158'}
+                    />
+                  </View>
+                  <View style={styles.drawerMenuTextBox}>
+                    <Text
+                      style={[
+                        styles.drawerMenuTitle,
+                        {
+                          color: activeSection === 'earnings' ? '#30D158' : activeTheme.textPrimary,
+                          fontWeight: activeSection === 'earnings' ? '700' : '600',
+                        },
+                      ]}
+                    >
+                      Earnings Overview
+                    </Text>
+                    <Text style={[styles.drawerMenuSub, { color: activeTheme.textSecondary }]}>
+                      Day, week, month & year trends
+                    </Text>
+                  </View>
+                  <MaterialCommunityIcons
+                    name="chevron-right"
+                    size={18}
+                    color={activeSection === 'earnings' ? '#30D158' : activeTheme.textSecondary}
                   />
                 </TouchableOpacity>
 
@@ -9469,5 +9613,51 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '800',
+  },
+  earningsStripCard: {
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+  },
+  earningsStripContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  earningsStripTextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    flex: 1,
+    marginRight: 10,
+  },
+  earningsStripItemText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+  },
+  earningsStripBullet: {
+    marginHorizontal: 6,
+    fontSize: 12,
+  },
+  earningsAnalyseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#30D158',
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    shadowColor: '#30D158',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  earningsAnalyseBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
 });
