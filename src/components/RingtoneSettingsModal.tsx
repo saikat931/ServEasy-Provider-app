@@ -370,7 +370,7 @@ export const RingtoneSettingsModal: React.FC<RingtoneSettingsModalProps> = ({
                         { color: isDark ? '#9CA3AF' : '#6B7280' },
                       ]}
                     >
-                      Energetic chime with high-clarity notification pulses
+                      Classic 90s telephone ringtone for live booking alerts
                     </Text>
                   </View>
                 </View>
