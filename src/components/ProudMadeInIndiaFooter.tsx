@@ -54,22 +54,24 @@ export const ProudMadeInIndiaFooter: React.FC<ProudMadeInIndiaFooterProps> = ({ 
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 22,
+    marginTop: 14,
     marginHorizontal: -16,
     alignItems: 'center',
   },
   skylineWrap: {
     width: '100%',
+    height: 165,
     position: 'relative',
     justifyContent: 'center',
+    alignItems: 'center',
   },
   skylineImage: {
     width: '100%',
-    aspectRatio: 1080 / 513,
+    height: '100%',
   },
   overlayTextBlock: {
     position: 'absolute',
-    top: '24%',
+    top: '18%',
     left: 0,
     right: 0,
     alignItems: 'center',
