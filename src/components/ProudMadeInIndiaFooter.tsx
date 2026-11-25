@@ -9,37 +9,44 @@ interface ProudMadeInIndiaFooterProps {
 }
 
 /**
- * Clean bottom-of-Overview signature featuring "Proudly Made in India by S.S.R"
- * paired with a copyright-free Indian architectural skyline line-art illustration.
+ * Bottom-of-Overview signature overlaying "Proudly Made in India by S.S.R"
+ * directly over a copyright-free panoramic Indian architectural skyline.
  */
 export const ProudMadeInIndiaFooter: React.FC<ProudMadeInIndiaFooterProps> = ({ theme }) => {
   const isDark = theme === 'dark';
-  const primaryInk = isDark ? 'rgba(255, 255, 255, 0.88)' : '#1E293B';
-  const secondaryInk = isDark ? 'rgba(255, 255, 255, 0.65)' : '#475569';
-  const authorInk = isDark ? 'rgba(255, 255, 255, 0.78)' : '#334155';
-  const skylineTint = isDark ? 'rgba(255, 255, 255, 0.24)' : 'rgba(30, 41, 59, 0.22)';
+  const primaryInk = isDark ? 'rgba(255, 255, 255, 0.94)' : '#0F172A';
+  const secondaryInk = isDark ? 'rgba(255, 255, 255, 0.78)' : '#334155';
+  const authorInk = isDark ? 'rgba(255, 255, 255, 0.88)' : '#1E293B';
+  const skylineTint = isDark ? 'rgba(255, 255, 255, 0.19)' : 'rgba(15, 23, 42, 0.17)';
+  const haloColor = isDark ? 'rgba(8, 9, 12, 0.92)' : 'rgba(235, 245, 255, 0.95)';
 
   return (
     <View style={styles.container}>
-      <View style={styles.textBlock}>
-        <Text style={[styles.proudlyText, { color: secondaryInk }]}>Proudly Made</Text>
-
-        <View style={styles.indiaRow}>
-          <Text style={[styles.indiaText, { color: primaryInk }]}>in India</Text>
-          <View style={styles.heartBadge}>
-            <MaterialCommunityIcons name="heart" size={14} color="#FFB800" />
-          </View>
-        </View>
-
-        <Text style={[styles.authorText, { color: authorInk }]}>by S.S.R</Text>
-      </View>
-
       <View style={styles.skylineWrap}>
         <Image
           source={INDIA_SKYLINE_IMAGE}
           style={[styles.skylineImage, { tintColor: skylineTint }]}
           resizeMode="contain"
         />
+
+        <View style={styles.overlayTextBlock} pointerEvents="none">
+          <Text style={[styles.proudlyText, { color: secondaryInk, textShadowColor: haloColor }]}>
+            Proudly Made
+          </Text>
+
+          <View style={styles.indiaRow}>
+            <Text style={[styles.indiaText, { color: primaryInk, textShadowColor: haloColor }]}>
+              in India
+            </Text>
+            <View style={styles.heartBadge}>
+              <MaterialCommunityIcons name="heart" size={14} color="#FFB800" />
+            </View>
+          </View>
+
+          <Text style={[styles.authorText, { color: authorInk, textShadowColor: haloColor }]}>
+            by S.S.R
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -47,20 +54,34 @@ export const ProudMadeInIndiaFooter: React.FC<ProudMadeInIndiaFooterProps> = ({ 
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 28,
+    marginTop: 22,
     marginHorizontal: -16,
-    paddingTop: 12,
     alignItems: 'center',
   },
-  textBlock: {
+  skylineWrap: {
+    width: '100%',
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  skylineImage: {
+    width: '100%',
+    aspectRatio: 1080 / 513,
+  },
+  overlayTextBlock: {
+    position: 'absolute',
+    top: '24%',
+    left: 0,
+    right: 0,
     alignItems: 'center',
     paddingHorizontal: 16,
-    marginBottom: 8,
+    zIndex: 2,
   },
   proudlyText: {
     fontSize: 13,
     fontWeight: '700',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
   },
   indiaRow: {
     flexDirection: 'row',
@@ -72,6 +93,8 @@ const styles = StyleSheet.create({
     fontSize: 25,
     fontWeight: '900',
     letterSpacing: -0.4,
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 10,
   },
   heartBadge: {
     marginLeft: 3,
@@ -80,16 +103,10 @@ const styles = StyleSheet.create({
   },
   authorText: {
     fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1.1,
+    fontWeight: '800',
+    letterSpacing: 1.3,
     marginTop: 3,
-  },
-  skylineWrap: {
-    width: '100%',
-    marginTop: 6,
-  },
-  skylineImage: {
-    width: '100%',
-    aspectRatio: 1080 / 372,
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 8,
   },
 });
