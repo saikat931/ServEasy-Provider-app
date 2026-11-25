@@ -1,6 +1,5 @@
 import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
 const INDIA_SKYLINE_IMAGE = require('../../assets/india_architecture.png');
 
@@ -41,12 +40,7 @@ export const ProudMadeInIndiaFooter: React.FC<ProudMadeInIndiaFooterProps> = ({ 
         </Text>
         <View style={styles.indiaRow}>
           <Text style={[styles.indiaText, { color: indiaColor }]}>in India</Text>
-          <MaterialCommunityIcons
-            name="circle-small"
-            size={22}
-            color="#FF9933"
-            style={styles.dotIcon}
-          />
+          <Text style={styles.flagEmoji}>🇮🇳</Text>
         </View>
         <Text style={[styles.authorText, { color: authorColor }]}>by S.S.R</Text>
       </View>
@@ -96,9 +90,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.3,
   },
-  dotIcon: {
-    marginLeft: 1,
-    marginTop: 1,
+  flagEmoji: {
+    fontSize: 18,
+    marginLeft: 5,
+    marginTop: 3,
   },
   authorText: {
     fontSize: 11,
