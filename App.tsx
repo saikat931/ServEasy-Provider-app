@@ -25,6 +25,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as Updates from 'expo-updates';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import our custom reusable components
 import { GlassCard } from './src/components/GlassCard';
@@ -291,7 +292,8 @@ function ProviderAppContent() {
 
   // Toast Notification state for Live Events
   const [liveToast, setLiveToast] = useState<ToastNotice | null>(null);
-  const hasNotified100Ref = useRef(false);
+  const hasShownWelcomeToastRef = useRef(false);
+  const profileCompletionSyncRef = useRef<number | null>(null);
 
   // Live Data States
   const [services, setServices] = useState<ProviderServiceItem[]>([]);
@@ -617,7 +619,7 @@ function ProviderAppContent() {
     return () => clearTimeout(t);
   }, [liveToast]);
 
-  // Surface 100% Profile Completion notice as a sleek top notification banner instead of taking up page space
+  // Surface sleek Welcome Again notification on app open, and 100% Profile Complete only once upon completion
   const isProfile100 = Boolean(
     (profileData?.progress?.is_100 ?? ((profileData?.progress?.percentage ?? 0) >= 100)) ||
     (profileData?.progress?.percentage ?? 0) >= 100
@@ -625,17 +627,78 @@ function ProviderAppContent() {
   const completionPercent = profileData?.progress?.percentage ?? (isProfile100 ? 100 : 0);
 
   useEffect(() => {
-    if (providerUser && isProfile100 && !hasNotified100Ref.current) {
-      hasNotified100Ref.current = true;
+    if (!showSplash && providerUser && !hasShownWelcomeToastRef.current) {
+      hasShownWelcomeToastRef.current = true;
+      const providerName =
+        profileData?.full_name?.trim() ||
+        [providerUser.first_name, providerUser.last_name].filter(Boolean).join(' ').trim() ||
+        profileData?.company_name?.trim() ||
+        'Service Provider';
       setLiveToast({
         id: Date.now(),
-        title: '✅ Profile 100% Complete!',
-        message: 'All 4 verification pillars are approved! You are eligible to add and offer services freely.',
+        title: `👋 Welcome Again, ${providerName}!`,
+        message: 'You are online and ready to receive live bookings.',
         type: 'success',
-        actionTab: 'services',
+        actionTab: 'dashboard',
       });
     }
-  }, [providerUser, isProfile100]);
+  }, [showSplash, providerUser, profileData]);
+
+  useEffect(() => {
+    if (!providerUser?.id || !profileData) return;
+    let cancelled = false;
+    const providerId = providerUser.id;
+    const notifiedKey = `@serveasy_profile_100_notified_v1_${providerId}`;
+    const lastPctKey = `@serveasy_profile_last_pct_v1_${providerId}`;
+
+    (async () => {
+      try {
+        const [alreadyNotified, storedLastPctRaw] = await Promise.all([
+          AsyncStorage.getItem(notifiedKey),
+          AsyncStorage.getItem(lastPctKey),
+        ]);
+        if (cancelled) return;
+
+        const currentPct = completionPercent;
+        const inMemoryPrevPct = profileCompletionSyncRef.current;
+        const storedLastPct = storedLastPctRaw !== null ? Number(storedLastPctRaw) : null;
+        profileCompletionSyncRef.current = currentPct;
+
+        if (!isProfile100) {
+          await AsyncStorage.setItem(lastPctKey, String(currentPct));
+          if (alreadyNotified) {
+            await AsyncStorage.removeItem(notifiedKey);
+          }
+          return;
+        }
+
+        const transitionedFromIncomplete =
+          (inMemoryPrevPct !== null && inMemoryPrevPct < 100) ||
+          (storedLastPct !== null && storedLastPct < 100);
+
+        await AsyncStorage.setItem(lastPctKey, '100');
+
+        if (alreadyNotified !== '1' && transitionedFromIncomplete) {
+          await AsyncStorage.setItem(notifiedKey, '1');
+          setLiveToast({
+            id: Date.now(),
+            title: '✅ Profile 100% Complete!',
+            message: 'All 4 verification pillars are approved! You are eligible to add and offer services freely.',
+            type: 'success',
+            actionTab: 'services',
+          });
+        } else if (alreadyNotified !== '1') {
+          await AsyncStorage.setItem(notifiedKey, '1');
+        }
+      } catch (err) {
+        console.warn('[App] Profile 100% notification state error:', err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [providerUser?.id, profileData, isProfile100, completionPercent]);
 
   // Dynamic Stats calculated from database live statistics
   const totalServices = profileData?.stats?.total_services ?? serverStats?.total_services ?? serverStats?.products ?? services.length;
@@ -864,6 +927,8 @@ function ProviderAppContent() {
       NotificationService.clearPendingBookingsNotification();
     } catch (_) {}
     activeRingingBookingIdRef.current = null;
+    hasShownWelcomeToastRef.current = false;
+    profileCompletionSyncRef.current = null;
     setLogoutModalVisible(false);
     await clearStoredProviderUser();
     setProviderUser(null);
@@ -4700,14 +4765,17 @@ function ProviderAppContent() {
           theme={theme}
           activeTheme={activeTheme}
           onLoginSuccess={(user) => {
+            hasShownWelcomeToastRef.current = true;
             setProviderUser(user);
             setActiveSection('dashboard');
             loadLiveData(true, user.id);
+            const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ').trim() || 'Service Provider';
             setLiveToast({
               id: Date.now(),
-              title: '🎉 Welcome Back!',
-              message: `Logged in successfully as ${user.first_name || 'Service Provider'}.`,
+              title: `👋 Welcome Again, ${fullName}!`,
+              message: `Logged in successfully as ${fullName}.`,
               type: 'success',
+              actionTab: 'dashboard',
             });
           }}
         />
