@@ -2,6 +2,7 @@ import React from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 
 const INDIA_SKYLINE_IMAGE = require('../../assets/india_architecture.png');
+const INDIA_MAP_ICON = require('../../assets/india_map_icon.png');
 
 interface ProudMadeInIndiaFooterProps {
   theme: 'dark' | 'light';
@@ -40,7 +41,11 @@ export const ProudMadeInIndiaFooter: React.FC<ProudMadeInIndiaFooterProps> = ({ 
         </Text>
         <View style={styles.indiaRow}>
           <Text style={[styles.indiaText, { color: indiaColor }]}>in India</Text>
-          <Text style={styles.flagEmoji}>🇮🇳</Text>
+          <Image
+            source={INDIA_MAP_ICON}
+            style={styles.indiaMapIcon}
+            resizeMode="contain"
+          />
         </View>
         <Text style={[styles.authorText, { color: authorColor }]}>by S.S.R</Text>
       </View>
@@ -90,10 +95,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: -0.3,
   },
-  flagEmoji: {
-    fontSize: 18,
+  indiaMapIcon: {
+    width: 22,
+    height: 22,
     marginLeft: 5,
-    marginTop: 3,
+    marginTop: 1,
   },
   authorText: {
     fontSize: 11,
