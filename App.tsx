@@ -37,6 +37,7 @@ import { NotificationService } from './src/services/NotificationService';
 import { GreetingWeatherCard } from './src/components/GreetingWeatherCard';
 import { ProudMadeInIndiaFooter } from './src/components/ProudMadeInIndiaFooter';
 import { EarningsAnalyseSection } from './src/components/EarningsAnalyseSection';
+import { PromoBannerCarousel } from './src/components/PromoBannerCarousel';
 import {
   ProviderBooking,
   ProviderServiceItem,
@@ -2049,6 +2050,43 @@ function ProviderAppContent() {
             </TouchableOpacity>
           </View>
         </GlassCard>
+
+        {/* Hero Featured Promo & Advertisement Carousel (Matches Rapido / Partner Mockup) */}
+        <PromoBannerCarousel
+          theme={theme}
+          onActionPress={(action) => {
+            if (action === 'wallet') {
+              setActiveSection('wallet');
+            } else if (action === 'services') {
+              setActiveSection('services');
+            } else if (action === 'boost') {
+              showCustomAlert(
+                '🚀 Boost Profile',
+                'Your profile will rank #1 for all nearby customers in your service area for 7 days. Dedicated priority badge activated!',
+                [
+                  { text: 'Later', style: 'cancel' },
+                  {
+                    text: 'Activate ₹199',
+                    style: 'default',
+                    onPress: () => {
+                      setLiveToast({
+                        id: Date.now(),
+                        title: '🚀 Profile Boost Active',
+                        message: 'Your profile is now featured at #1 in your service area for 7 days.',
+                        type: 'success',
+                      });
+                    },
+                  },
+                ]
+              );
+            } else {
+              showCustomAlert(
+                '🎁 Partner Offer',
+                'Share your referral code or visit the partner portal to claim this exclusive benefit.'
+              );
+            }
+          }}
+        />
 
         {/* Live GPS Broadcasting Card for In-Progress Jobs */}
         {activeInProgressJob && (
