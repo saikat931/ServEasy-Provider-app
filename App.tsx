@@ -1714,41 +1714,38 @@ function ProviderAppContent() {
         {/* Stats Row */}
         <View style={isMobile ? styles.statsContainerMobile : styles.statsContainer}>
           <GlassCard theme={theme} style={[styles.statCard, isMobile ? styles.statCardMobile : null]} intensity={activeTheme.glassIntensity}>
-            <View style={styles.statIconRow}>
-              <MaterialCommunityIcons name="layers-outline" size={18} color={activeTheme.iconColor} />
+            <View style={styles.statHeader}>
+              <Text style={[styles.statTitle, isMobile && styles.statTitleMobile, { color: activeTheme.textSecondary }]} numberOfLines={1}>
+                {isMobile ? 'SERVICES' : 'TOTAL SERVICES'}
+              </Text>
+              <MaterialCommunityIcons name="layers-outline" size={isMobile ? 14 : 20} color={activeTheme.iconColor} />
             </View>
-            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: activeTheme.textPrimary }]}>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: activeTheme.textPrimary }]} numberOfLines={1}>
               {totalServices}
             </Text>
-            <Text style={[styles.statLabel, { color: activeTheme.textSecondary }]} numberOfLines={1}>
-              Services
-            </Text>
           </GlassCard>
 
           <GlassCard theme={theme} style={[styles.statCard, isMobile ? styles.statCardMobile : null]} intensity={activeTheme.glassIntensity}>
-            <View style={styles.statIconRow}>
-              <View style={styles.liveIndicatorBadge}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveIndicatorText}>LIVE</Text>
-              </View>
+            <View style={styles.statHeader}>
+              <Text style={[styles.statTitle, isMobile && styles.statTitleMobile, { color: activeTheme.textSecondary }]} numberOfLines={1}>
+                BOOKINGS
+              </Text>
+              <MaterialCommunityIcons name="calendar-check-outline" size={isMobile ? 14 : 20} color="#30D158" />
             </View>
-            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: activeTheme.textPrimary }]}>
+            <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: activeTheme.textPrimary }]} numberOfLines={1}>
               {totalBookings}
             </Text>
-            <Text style={[styles.statLabel, { color: activeTheme.textSecondary }]} numberOfLines={1}>
-              Bookings
-            </Text>
           </GlassCard>
 
           <GlassCard theme={theme} style={[styles.statCard, isMobile ? styles.statCardMobile : null]} intensity={activeTheme.glassIntensity}>
-            <View style={styles.statIconRow}>
-              <MaterialCommunityIcons name="currency-inr" size={18} color="#30D158" />
+            <View style={styles.statHeader}>
+              <Text style={[styles.statTitle, isMobile && styles.statTitleMobile, { color: activeTheme.textSecondary }]} numberOfLines={1}>
+                {isMobile ? 'REVENUE' : 'TOTAL REVENUE'}
+              </Text>
+              <MaterialCommunityIcons name="currency-inr" size={isMobile ? 14 : 20} color="#30D158" />
             </View>
             <Text style={[styles.statValue, isMobile && styles.statValueMobile, { color: '#30D158' }]} numberOfLines={1}>
               {formatCurrency(totalRevenue)}
-            </Text>
-            <Text style={[styles.statLabel, { color: activeTheme.textSecondary }]} numberOfLines={1}>
-              Revenue
             </Text>
           </GlassCard>
         </View>
@@ -6119,14 +6116,13 @@ const styles = StyleSheet.create({
     padding: 16,
     marginRight: 10,
     marginBottom: 10,
-    alignItems: 'center',
   },
   statCardMobile: {
     flex: 1,
     minWidth: 0,
     padding: 12,
+    marginRight: 0,
     marginBottom: 0,
-    alignItems: 'center',
   },
   statsContainerMobile: {
     flexDirection: 'row',
@@ -6134,17 +6130,6 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 16,
     width: '100%',
-  },
-  statIconRow: {
-    marginBottom: 8,
-    alignItems: 'center',
-  },
-  statLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-    marginTop: 2,
-    textAlign: 'center',
   },
   statTitleMobile: {
     fontSize: 10,
@@ -6161,14 +6146,15 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.5,
+    flexShrink: 1,
+    marginRight: 4,
   },
   statValue: {
     fontSize: 20,
     fontWeight: '800',
-    textAlign: 'center',
   },
   statValueMobile: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
   },
   liveIndicatorBadge: {
