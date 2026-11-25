@@ -3554,11 +3554,21 @@ function ProviderAppContent() {
               {/* Theme Toggle Button */}
               <TouchableOpacity
                 onPress={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-                style={[styles.themeToggleButton, { backgroundColor: activeTheme.activeNavBg }]}
+                style={[
+                  styles.themeToggleButton,
+                  isMobile && styles.themeToggleButtonMobile,
+                  {
+                    backgroundColor: activeTheme.activeNavBg,
+                    borderColor: activeTheme.cardBorder,
+                  },
+                ]}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityLabel={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
               >
                 <MaterialCommunityIcons
                   name={theme === 'dark' ? 'weather-sunny' : 'weather-night'}
-                  size={16}
+                  size={isMobile ? 19 : 16}
                   color={activeTheme.iconColor}
                 />
                 {!isMobile && (
@@ -6116,10 +6126,19 @@ const styles = StyleSheet.create({
   themeToggleButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    marginRight: 16,
+    justifyContent: 'center',
+    height: 38,
+    paddingHorizontal: 14,
+    borderRadius: 19,
+    borderWidth: 1,
+    marginRight: 12,
+  },
+  themeToggleButtonMobile: {
+    width: 38,
+    height: 38,
+    paddingHorizontal: 0,
+    borderRadius: 19,
+    marginRight: 10,
   },
   themeToggleText: {
     fontSize: 12,
