@@ -4,6 +4,8 @@ const path = require('path');
 const projectRoot = path.resolve(__dirname, '..');
 const androidAppDir = path.join(projectRoot, 'android', 'app');
 const buildGradlePath = path.join(androidAppDir, 'build.gradle');
+const mainAppPath = path.join(androidAppDir, 'src', 'main', 'java', 'com', 'serveasy', 'provider', 'MainApplication.kt');
+const assetsDir = path.join(androidAppDir, 'src', 'main', 'assets');
 const sourceKeystore = path.join(projectRoot, 'credentials', 'release.keystore');
 const targetKeystore = path.join(androidAppDir, 'release.keystore');
 
@@ -17,7 +19,13 @@ if (fs.existsSync(sourceKeystore)) {
   console.warn('[configure-release-build] Warning: credentials/release.keystore not found.');
 }
 
-// 2. Patch android/app/build.gradle
+// 2. Ensure assets directory exists
+if (!fs.existsSync(assetsDir)) {
+  fs.mkdirSync(assetsDir, { recursive: true });
+  console.log('[configure-release-build] Created android/app/src/main/assets directory.');
+}
+
+// 3. Patch android/app/build.gradle
 if (fs.existsSync(buildGradlePath)) {
   let content = fs.readFileSync(buildGradlePath, 'utf8');
 
@@ -63,4 +71,36 @@ if (fs.existsSync(buildGradlePath)) {
 } else {
   console.error('[configure-release-build] Error: android/app/build.gradle not found.');
   process.exit(1);
+}
+
+// 4. Patch MainApplication.kt to disable developer support in release mode
+if (fs.existsSync(mainAppPath)) {
+  let mainAppContent = fs.readFileSync(mainAppPath, 'utf8');
+  
+  const targetHostCall = `    ExpoReactHostFactory.getDefaultReactHost(
+      context = applicationContext,
+      packageList =
+        PackageList(this).packages.apply {
+          // Packages that cannot be autolinked yet can be added manually here, for example:
+          // add(MyReactNativePackage())
+        }
+    )`;
+
+  const patchedHostCall = `    ExpoReactHostFactory.getDefaultReactHost(
+      context = applicationContext,
+      packageList =
+        PackageList(this).packages.apply {
+          // Packages that cannot be autolinked yet can be added manually here, for example:
+          // add(MyReactNativePackage())
+        },
+      useDevSupport = BuildConfig.DEBUG
+    )`;
+
+  if (mainAppContent.includes(targetHostCall)) {
+    mainAppContent = mainAppContent.replace(targetHostCall, patchedHostCall);
+    fs.writeFileSync(mainAppPath, mainAppContent, 'utf8');
+    console.log('[configure-release-build] Successfully patched MainApplication.kt: useDevSupport = BuildConfig.DEBUG');
+  } else {
+    console.log('[configure-release-build] Target block in MainApplication.kt already patched or modified.');
+  }
 }

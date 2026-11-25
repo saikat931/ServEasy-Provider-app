@@ -1778,131 +1778,50 @@ function ProviderAppContent() {
           </GlassCard>
         )}
 
-        {/* Recent Bookings List on Overview (Matches Web Service Provider Recent Bookings Table) */}
-        <View style={[styles.splitContentLayout, isMobile && styles.splitContentLayoutMobile]}>
-          {recentBookings.length > 0 && (
-            <GlassCard theme={theme} style={[styles.dashboardTableCard, isMobile && styles.dashboardTableCardMobile]} intensity={activeTheme.glassIntensity}>
-              <View style={styles.tableHeaderSection}>
-                <View>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <Text style={[styles.tableCardTitle, { color: activeTheme.textPrimary }]}>
-                      Recent Bookings
-                    </Text>
-                    <View style={[styles.liveIndicatorBadge, { marginLeft: 8 }]}>
-                      <View style={styles.liveDot} />
-                      <Text style={styles.liveIndicatorText}>LIVE</Text>
-                    </View>
-                  </View>
-                  <Text style={[styles.tableCardSub, { color: activeTheme.textSecondary }]}>
-                    Recent customer service bookings ({recentBookings.length} of {bookings.length})
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  onPress={() => setActiveSection('bookings')}
-                  style={[styles.viewAllBtn, { backgroundColor: activeTheme.activeNavBg }]}
-                >
-                  <Text style={[styles.viewAllBtnText, { color: activeTheme.activeNavText }]}>
-                    View All Bookings ({bookings.length})
-                  </Text>
-                  <MaterialCommunityIcons name="arrow-right" size={14} color={activeTheme.activeNavText} />
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.bookingsList}>
-                {isLoading ? (
-                  <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#0084FF" />
-                    <Text style={[styles.loadingText, { color: activeTheme.textSecondary }]}>
-                      Fetching live database bookings...
-                    </Text>
-                  </View>
-                ) : (
-                  recentBookings.map((booking) => renderBookingCard(booking, true))
-                )}
-              </View>
-            </GlassCard>
-          )}
-
-          {/* Right Column: Service Registry */}
-          <GlassCard
-            theme={theme}
-            style={[
-              styles.dashboardProfileCard,
-              isMobile && styles.dashboardProfileCardMobile,
-              recentBookings.length === 0 && { flex: 1, width: '100%' },
-            ]}
-            intensity={activeTheme.glassIntensity}
-          >
+        {/* Recent Bookings List on Overview */}
+        {recentBookings.length > 0 && (
+          <GlassCard theme={theme} style={styles.dashboardFullWidthCard} intensity={activeTheme.glassIntensity}>
             <View style={styles.tableHeaderSection}>
               <View>
-                <Text style={[styles.profileCardTitle, { color: activeTheme.textPrimary }]}>Service Registry</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={[styles.tableCardTitle, { color: activeTheme.textPrimary }]}>
+                    Recent Bookings
+                  </Text>
+                  <View style={[styles.liveIndicatorBadge, { marginLeft: 8 }]}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.liveIndicatorText}>LIVE</Text>
+                  </View>
+                </View>
                 <Text style={[styles.tableCardSub, { color: activeTheme.textSecondary }]}>
-                  {services.length} active service offerings
+                  Recent customer service bookings ({recentBookings.length} of {bookings.length})
                 </Text>
               </View>
+
               <TouchableOpacity
-                onPress={() => setAddServiceModalVisible(true)}
-                style={[styles.addServiceBtn, { backgroundColor: activeTheme.accentBtnBg }]}
+                onPress={() => setActiveSection('bookings')}
+                style={[styles.viewAllBtn, { backgroundColor: activeTheme.activeNavBg }]}
               >
-                <MaterialCommunityIcons name="plus" size={16} color={activeTheme.accentBtnText} />
-                <Text style={[styles.addServiceBtnText, { color: activeTheme.accentBtnText }]}>Add</Text>
+                <Text style={[styles.viewAllBtnText, { color: activeTheme.activeNavText }]}>
+                  View All Bookings ({bookings.length})
+                </Text>
+                <MaterialCommunityIcons name="arrow-right" size={14} color={activeTheme.activeNavText} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView horizontal={isMobile} showsHorizontalScrollIndicator={isMobile}>
-              <View style={isMobile ? { minWidth: 460 } : { flex: 1 }}>
-                <View style={[styles.tableHead, { backgroundColor: activeTheme.tableHeaderBg }]}>
-                  <Text style={[styles.thText, styles.colId, { color: activeTheme.textSecondary }]}>ID</Text>
-                  <Text style={[styles.thText, styles.colName, { color: activeTheme.textSecondary }]}>SERVICE</Text>
-                  <Text style={[styles.thText, styles.colRate, { color: activeTheme.textSecondary }]}>RATE</Text>
-                  <Text style={[styles.thText, styles.colDuration, { color: activeTheme.textSecondary }]}>DUR</Text>
-                  <Text style={[styles.thText, styles.colAction, { color: activeTheme.textSecondary }]}>ACTION</Text>
+            <View style={styles.bookingsList}>
+              {isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#0084FF" />
+                  <Text style={[styles.loadingText, { color: activeTheme.textSecondary }]}>
+                    Fetching live database bookings...
+                  </Text>
                 </View>
-
-                {services.length === 0 ? (
-                  <View style={{ paddingVertical: 24, alignItems: 'center', justifyContent: 'center' }}>
-                    <MaterialCommunityIcons name="layers-outline" size={28} color={activeTheme.textSecondary} />
-                    <Text style={{ color: activeTheme.textSecondary, fontSize: 13, marginTop: 6, fontWeight: '500' }}>
-                      No services registered yet.
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => setAddServiceModalVisible(true)}
-                      style={{ marginTop: 8, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 8, backgroundColor: activeTheme.accentBtnBg }}
-                    >
-                      <Text style={{ color: activeTheme.accentBtnText, fontSize: 12, fontWeight: '700' }}>+ Add Service</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  services.map((item) => (
-                    <View key={item.id} style={[styles.tableRow, { borderBottomColor: activeTheme.cardBorder }]}>
-                      <Text style={[styles.tdText, styles.colId, { color: activeTheme.textSecondary }]}>{item.id}</Text>
-                      <View style={styles.colName}>
-                        <Text style={[styles.tdText, styles.boldText, { color: activeTheme.textPrimary }]} numberOfLines={1}>
-                          {item.name}
-                        </Text>
-                        <Text style={[styles.tableRowSub, { color: activeTheme.textSecondary }]} numberOfLines={1}>
-                          {item.subcategory}
-                        </Text>
-                      </View>
-                      <Text style={[styles.tdText, styles.colRate, styles.boldText, { color: '#30D158' }]}>
-                        {item.rate}
-                      </Text>
-                      <Text style={[styles.tdText, styles.colDuration, { color: activeTheme.textSecondary }]}>
-                        {item.duration}
-                      </Text>
-                      <View style={[styles.colAction, styles.rowActionContainer]}>
-                        <TouchableOpacity onPress={() => handleDeleteService(item.id)} style={styles.tableActionDeleteBtn}>
-                          <MaterialCommunityIcons name="delete-outline" size={18} color="#FF453A" />
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  ))
-                )}
-              </View>
-            </ScrollView>
+              ) : (
+                recentBookings.map((booking) => renderBookingCard(booking, true))
+              )}
+            </View>
           </GlassCard>
-        </View>
+        )}
       </View>
     );
   };
@@ -6281,6 +6200,11 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
+  },
+  dashboardFullWidthCard: {
+    width: '100%',
+    padding: 16,
+    marginBottom: 16,
   },
   dashboardTableCard: {
     flex: 1.5,

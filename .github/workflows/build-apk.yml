@@ -42,28 +42,37 @@ jobs:
       - name: Configure Production Release Signing & Hermes Bundling
         run: node scripts/configure-release-build.js
 
+      - name: Bundle Offline JavaScript for Production
+        run: |
+          npx expo export:embed --platform android --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+
       - name: Build Standalone Production Release APK
         run: |
           cd android
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
 
-      - name: Rename APK for Easy Identification
+      - name: Prepare APKs for Easy Identification
         run: |
           cp android/app/build/outputs/apk/release/app-release.apk ServEasy-Provider.apk
+          cp android/app/build/outputs/apk/release/app-release.apk ServEasy-Provider-v1.0.6.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ServEasy-Provider-App-APK
-          path: ServEasy-Provider.apk
+          path: |
+            ServEasy-Provider.apk
+            ServEasy-Provider-v1.0.6.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
           name: ServEasy Provider App
-          files: ServEasy-Provider.apk
+          files: |
+            ServEasy-Provider.apk
+            ServEasy-Provider-v1.0.6.apk
           draft: false
           prerelease: false
           generate_release_notes: true
