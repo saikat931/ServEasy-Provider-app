@@ -2,7 +2,7 @@
   "expo": {
     "name": "ServEasy Provider",
     "slug": "provider-app",
-    "version": "1.0.7",
+    "version": "1.0.8",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.serveasy.provider",
-      "versionCode": 3,
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -31,7 +31,9 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.VIBRATE",
         "android.permission.WAKE_LOCK",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
       ]
     },
     "plugins": [
@@ -51,7 +53,19 @@
         }
       ],
       "expo-audio",
-      "expo-asset"
+      "expo-asset",
+      "expo-background-task",
+      [
+        "expo-notifications",
+        {
+          "largeIcon": "./assets/icon.png",
+          "color": "#FFD60A",
+          "defaultChannel": "pending-bookings",
+          "sounds": [
+            "./assets/audio/serveasy_booking_ringtone.wav"
+          ]
+        }
+      ]
     ],
     "updates": {
       "url": "https://u.expo.dev/fc1a7de7-01d6-47ae-8bd8-66afc8dfade4",

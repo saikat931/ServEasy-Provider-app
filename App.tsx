@@ -18,6 +18,7 @@ import {
   Linking,
   Animated,
   Vibration,
+  AppState,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -31,6 +32,7 @@ import { Splash } from './src/components/Splash';
 import { ProviderAuthModal } from './src/components/ProviderAuthModal';
 import { RingtoneSettingsModal } from './src/components/RingtoneSettingsModal';
 import { RingtoneService } from './src/services/RingtoneService';
+import { NotificationService } from './src/services/NotificationService';
 import {
   ProviderBooking,
   ProviderServiceItem,
@@ -639,6 +641,45 @@ function ProviderAppContent() {
   const totalRevenue = profileData?.stats?.total_sales ?? serverStats?.total_sales ?? (serverStats?.sales ? parseFloat(String(serverStats.sales).replace(/[^0-9.]/g, '')) : completedBookings.reduce((sum, b) => sum + (Number(b.price) || 0), 0));
   const pendingCount = bookings.filter((b) => b.status === 'pending').length;
 
+  // ─── Phone Notification Bar Alerts for Pending Bookings (When App Closed/Backgrounded) ─
+  const pendingCountRef = useRef(pendingCount);
+  pendingCountRef.current = pendingCount;
+  const activeProviderIdRef = useRef(activeProviderId);
+  activeProviderIdRef.current = activeProviderId;
+
+  useEffect(() => {
+    NotificationService.initialize();
+
+    const unsubscribeTap = NotificationService.subscribeToNotificationTap(() => {
+      setBookingFilter('pending');
+      setActiveSection('bookings');
+      NotificationService.clearPendingBookingsNotification();
+    });
+
+    const appStateSub = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'background') {
+        if (activeProviderIdRef.current && pendingCountRef.current > 0) {
+          NotificationService.showPendingBookingsNotification(pendingCountRef.current);
+        }
+      } else if (nextAppState === 'active') {
+        NotificationService.clearPendingBookingsNotification();
+      }
+    });
+
+    return () => {
+      unsubscribeTap();
+      appStateSub.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!activeProviderId || pendingCount <= 0) {
+      NotificationService.clearPendingBookingsNotification();
+    } else if (AppState.currentState === 'background') {
+      NotificationService.showPendingBookingsNotification(pendingCount);
+    }
+  }, [activeProviderId, pendingCount]);
+
   // ─── Real-Time Live GPS Location Streaming for In-Progress Jobs ────────────
   const activeInProgressJob = bookings.find((b) => b.status === 'in_progress');
 
@@ -817,6 +858,7 @@ function ProviderAppContent() {
     try {
       Vibration.cancel();
       RingtoneService.stopRinging();
+      NotificationService.clearPendingBookingsNotification();
     } catch (_) {}
     activeRingingBookingIdRef.current = null;
     setLogoutModalVisible(false);
@@ -840,6 +882,7 @@ function ProviderAppContent() {
     try {
       Vibration.cancel();
       RingtoneService.stopRinging();
+      NotificationService.clearPendingBookingsNotification();
     } catch (_) {}
     if (!activeProviderId) {
       showCustomAlert('Sign In Required', 'Please sign in to accept bookings.');
@@ -1749,28 +1792,6 @@ function ProviderAppContent() {
             </Text>
           </GlassCard>
         </View>
-
-        {/* Pending Booking Notice */}
-        {pendingCount > 0 && (
-          <TouchableOpacity
-            onPress={() => {
-              setBookingFilter('pending');
-              setActiveSection('bookings');
-            }}
-            style={styles.pendingAlertBanner}
-          >
-            <View style={styles.pendingAlertIconWrap}>
-              <MaterialCommunityIcons name="bell-ring" size={18} color="#FFD60A" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.pendingAlertTitle}>
-                {pendingCount} Pending Booking{pendingCount > 1 ? 's' : ''} Awaiting Action
-              </Text>
-              <Text style={styles.pendingAlertSub}>Tap to review and accept incoming requests.</Text>
-            </View>
-            <MaterialCommunityIcons name="chevron-right" size={20} color="#FFD60A" />
-          </TouchableOpacity>
-        )}
 
         {/* Live GPS Broadcasting Card for In-Progress Jobs */}
         {activeInProgressJob && (
@@ -6177,32 +6198,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: '#30D158',
     letterSpacing: 0.5,
-  },
-  pendingAlertBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 214, 10, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 214, 10, 0.4)',
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 16,
-  },
-  pendingAlertIconWrap: {
-    padding: 8,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 214, 10, 0.2)',
-    marginRight: 10,
-  },
-  pendingAlertTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#FFD60A',
-  },
-  pendingAlertSub: {
-    fontSize: 11,
-    color: '#E0E0E0',
-    marginTop: 1,
   },
   splitContentLayout: {
     flexDirection: 'row',
