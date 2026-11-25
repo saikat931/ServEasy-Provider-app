@@ -6211,6 +6211,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   scrollContentContainer: {
+    flexGrow: 1,
     paddingBottom: isMobile ? 110 : 40,
   },
   sectionTitle: {
@@ -6231,6 +6232,7 @@ const styles = StyleSheet.create({
   },
   dashboardView: {
     width: '100%',
+    flex: 1,
   },
   statsContainer: {
     flexDirection: 'row',

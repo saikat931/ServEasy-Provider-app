@@ -54,7 +54,9 @@ export const ProudMadeInIndiaFooter: React.FC<ProudMadeInIndiaFooterProps> = ({ 
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: 14,
+    marginTop: 'auto',
+    paddingTop: 20,
+    marginBottom: -24,
     marginHorizontal: -16,
     alignItems: 'center',
   },
