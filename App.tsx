@@ -92,6 +92,8 @@ interface ToastNotice {
   message: string;
   type: 'success' | 'info' | 'warning';
   actionTab?: 'dashboard' | 'services' | 'bookings' | 'wallet' | 'profile' | 'verification';
+  isLiveBooking?: boolean;
+  bookingId?: number;
 }
 
 interface CustomAlertButton {
@@ -348,6 +350,32 @@ function ProviderAppContent() {
   const [isAddingBranch, setIsAddingBranch] = useState(false);
   const [isLocatingBranch, setIsLocatingBranch] = useState(false);
 
+  // Active navigation section & open modal tracker refs for real-time async callbacks
+  const activeSectionRef = useRef(activeSection);
+  useEffect(() => {
+    activeSectionRef.current = activeSection;
+  }, [activeSection]);
+
+  const hasActiveModalRef = useRef(false);
+  useEffect(() => {
+    hasActiveModalRef.current =
+      authModalVisible ||
+      logoutModalVisible ||
+      ringtoneSettingsModalVisible ||
+      addServiceModalVisible ||
+      bankModalVisible ||
+      companyModalVisible ||
+      branchModalVisible;
+  }, [
+    authModalVisible,
+    logoutModalVisible,
+    ringtoneSettingsModalVisible,
+    addServiceModalVisible,
+    bankModalVisible,
+    companyModalVisible,
+    branchModalVisible,
+  ]);
+
   // Reference to track last SSE event ID to avoid duplicate alerts
   const lastEventIdRef = useRef<number>(0);
   const pollerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -513,6 +541,14 @@ function ProviderAppContent() {
               } catch (rErr) {
                 console.warn('Ringtone error:', rErr);
               }
+
+              // 3. SMART AUTO-REDIRECT:
+              // If provider is idle on Overview dashboard (and not in an open modal),
+              // immediately auto-navigate to Bookings page with 'pending' filter!
+              if (activeSectionRef.current === 'dashboard' && !hasActiveModalRef.current) {
+                setBookingFilter('pending');
+                setActiveSection('bookings');
+              }
             }
           } else if (latestEvent.event_name === 'booking.accepted') {
             toastTitle = '✅ Booking Accepted';
@@ -540,6 +576,9 @@ function ProviderAppContent() {
             title: toastTitle,
             message: toastMsg,
             type: toastType,
+            actionTab: 'bookings',
+            isLiveBooking: latestEvent.event_name === 'booking.created',
+            bookingId: Number(latestEvent.booking_id || latestEvent.payload?.booking_id),
           });
 
           loadLiveData(false);
@@ -563,9 +602,10 @@ function ProviderAppContent() {
     };
   }, [activeProviderId, loadLiveData]);
 
-  // Auto-dismiss live toast after 5 seconds
+  // Auto-dismiss live toast after 5 seconds (except for live incoming bookings which require provider action)
   useEffect(() => {
     if (!liveToast) return;
+    if (liveToast.isLiveBooking) return;
     const t = setTimeout(() => {
       setLiveToast(null);
     }, 5000);
@@ -1669,9 +1709,6 @@ function ProviderAppContent() {
 
   // ─── SECTION 1: DASHBOARD (OVERVIEW) ─────────────────────────────────────────
   const renderDashboardOverview = () => {
-    // Recent Bookings strictly matching Web Service Provider Overview table (latest 5 bookings from database)
-    const recentBookings = bookings.slice(0, 5);
-
     return (
       <View style={styles.dashboardView}>
         {/* Stats Row */}
@@ -1785,51 +1822,6 @@ function ProviderAppContent() {
                   </>
                 )}
               </TouchableOpacity>
-            </View>
-          </GlassCard>
-        )}
-
-        {/* Recent Bookings List on Overview */}
-        {recentBookings.length > 0 && (
-          <GlassCard theme={theme} style={styles.dashboardFullWidthCard} intensity={activeTheme.glassIntensity}>
-            <View style={styles.tableHeaderSection}>
-              <View>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={[styles.tableCardTitle, { color: activeTheme.textPrimary }]}>
-                    Recent Bookings
-                  </Text>
-                  <View style={[styles.liveIndicatorBadge, { marginLeft: 8 }]}>
-                    <View style={styles.liveDot} />
-                    <Text style={styles.liveIndicatorText}>LIVE</Text>
-                  </View>
-                </View>
-                <Text style={[styles.tableCardSub, { color: activeTheme.textSecondary }]}>
-                  Recent customer service bookings ({recentBookings.length} of {bookings.length})
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                onPress={() => setActiveSection('bookings')}
-                style={[styles.viewAllBtn, { backgroundColor: activeTheme.activeNavBg }]}
-              >
-                <Text style={[styles.viewAllBtnText, { color: activeTheme.activeNavText }]}>
-                  View All Bookings ({bookings.length})
-                </Text>
-                <MaterialCommunityIcons name="arrow-right" size={14} color={activeTheme.activeNavText} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.bookingsList}>
-              {isLoading ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#0084FF" />
-                  <Text style={[styles.loadingText, { color: activeTheme.textSecondary }]}>
-                    Fetching live database bookings...
-                  </Text>
-                </View>
-              ) : (
-                recentBookings.map((booking) => renderBookingCard(booking, true))
-              )}
             </View>
           </GlassCard>
         )}
@@ -3317,7 +3309,10 @@ function ProviderAppContent() {
                   Vibration.cancel();
                   RingtoneService.stopRinging();
                 } catch (_) {}
-                if (liveToast.actionTab) {
+                if (liveToast.isLiveBooking) {
+                  setBookingFilter('pending');
+                  setActiveSection('bookings');
+                } else if (liveToast.actionTab) {
                   setActiveSection(liveToast.actionTab);
                 } else {
                   setActiveSection('bookings');
@@ -3333,7 +3328,9 @@ function ProviderAppContent() {
                   styles.floatingToastCard,
                   {
                     borderColor:
-                      liveToast.type === 'success'
+                      liveToast.isLiveBooking
+                        ? '#30D158'
+                        : liveToast.type === 'success'
                         ? '#30D158'
                         : liveToast.type === 'warning'
                         ? '#FF453A'
@@ -3346,7 +3343,7 @@ function ProviderAppContent() {
                     styles.toastIconBox,
                     {
                       backgroundColor:
-                        liveToast.type === 'success'
+                        liveToast.isLiveBooking || liveToast.type === 'success'
                           ? 'rgba(48,209,88,0.2)'
                           : liveToast.type === 'warning'
                           ? 'rgba(255,69,58,0.2)'
@@ -3356,7 +3353,7 @@ function ProviderAppContent() {
                 >
                   <MaterialCommunityIcons
                     name={
-                      liveToast.type === 'success'
+                      liveToast.isLiveBooking || liveToast.type === 'success'
                         ? 'bell-ring'
                         : liveToast.type === 'warning'
                         ? 'alert-circle'
@@ -3364,7 +3361,7 @@ function ProviderAppContent() {
                     }
                     size={20}
                     color={
-                      liveToast.type === 'success'
+                      liveToast.isLiveBooking || liveToast.type === 'success'
                         ? '#30D158'
                         : liveToast.type === 'warning'
                         ? '#FF453A'
@@ -3379,6 +3376,54 @@ function ProviderAppContent() {
                   <Text style={[styles.toastMessage, { color: activeTheme.textSecondary }]} numberOfLines={2}>
                     {liveToast.message}
                   </Text>
+                  {liveToast.isLiveBooking && (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 }}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          try {
+                            Vibration.cancel();
+                            RingtoneService.stopRinging();
+                          } catch (_) {}
+                          setBookingFilter('pending');
+                          setActiveSection('bookings');
+                          setLiveToast(null);
+                        }}
+                        style={{
+                          backgroundColor: '#30D158',
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                          borderRadius: 8,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        <MaterialCommunityIcons name="arrow-right-circle" size={14} color="#FFFFFF" />
+                        <Text style={{ color: '#FFFFFF', fontSize: 11, fontWeight: '700' }}>View & Accept</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => {
+                          try {
+                            Vibration.cancel();
+                            RingtoneService.stopRinging();
+                          } catch (_) {}
+                          setLiveToast(null);
+                        }}
+                        style={{
+                          backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 8,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        <MaterialCommunityIcons name="volume-off" size={14} color={activeTheme.textSecondary} />
+                        <Text style={{ color: activeTheme.textSecondary, fontSize: 11, fontWeight: '600' }}>Mute</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
                 <TouchableOpacity
                   onPress={() => {
