@@ -35,6 +35,7 @@ import { RingtoneSettingsModal } from './src/components/RingtoneSettingsModal';
 import { RingtoneService } from './src/services/RingtoneService';
 import { NotificationService } from './src/services/NotificationService';
 import { GreetingWeatherCard } from './src/components/GreetingWeatherCard';
+import { ProudMadeInIndiaFooter } from './src/components/ProudMadeInIndiaFooter';
 import {
   ProviderBooking,
   ProviderServiceItem,
@@ -1924,6 +1925,9 @@ function ProviderAppContent() {
             </View>
           </GlassCard>
         )}
+
+        {/* Overview Footer: Proudly Made in India by S.S.R */}
+        <ProudMadeInIndiaFooter theme={theme} />
       </View>
     );
   };
