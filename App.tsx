@@ -38,6 +38,7 @@ import { GreetingWeatherCard } from './src/components/GreetingWeatherCard';
 import { ProudMadeInIndiaFooter } from './src/components/ProudMadeInIndiaFooter';
 import { EarningsAnalyseSection } from './src/components/EarningsAnalyseSection';
 import { PromoBannerCarousel } from './src/components/PromoBannerCarousel';
+import { ProviderNotificationsSection } from './src/components/ProviderNotificationsSection';
 import {
   ProviderBooking,
   ProviderServiceItem,
@@ -98,7 +99,7 @@ interface ToastNotice {
   title: string;
   message: string;
   type: 'success' | 'info' | 'warning';
-  actionTab?: 'dashboard' | 'services' | 'bookings' | 'wallet' | 'profile' | 'verification' | 'earnings';
+  actionTab?: 'dashboard' | 'services' | 'bookings' | 'wallet' | 'profile' | 'verification' | 'earnings' | 'alerts';
   isLiveBooking?: boolean;
   bookingId?: number;
 }
@@ -134,8 +135,8 @@ function ProviderAppContent() {
   // Sidebar state: collapsed or expanded (only used on tablet/desktop)
   const [sidebarExpanded, setSidebarExpanded] = useState(true);
 
-  // Active navigation section: 'dashboard', 'services', 'bookings', 'wallet', 'profile', 'verification', 'earnings'
-  const [activeSection, setActiveSection] = useState<'dashboard' | 'services' | 'bookings' | 'wallet' | 'profile' | 'verification' | 'earnings'>('dashboard');
+  // Active navigation section: 'dashboard', 'services', 'bookings', 'wallet', 'profile', 'verification', 'earnings', 'alerts'
+  const [activeSection, setActiveSection] = useState<'dashboard' | 'services' | 'bookings' | 'wallet' | 'profile' | 'verification' | 'earnings' | 'alerts'>('dashboard');
 
   // Mobile Right Sidebar Drawer State & Smooth Slide Animation
   const [rightSidebarVisible, setRightSidebarVisible] = useState(false);
@@ -4084,6 +4085,7 @@ function ProviderAppContent() {
                       {activeSection === 'bookings' && 'Live Bookings Manager'}
                       {activeSection === 'wallet' && 'My Wallet & Payouts'}
                       {activeSection === 'earnings' && 'Earnings Overview'}
+                      {activeSection === 'alerts' && 'Alerts & Notifications'}
                       {activeSection === 'profile' && 'My Account & Profile'}
                       {activeSection === 'verification' && 'ID Verification'}
                     </Text>
@@ -4264,6 +4266,25 @@ function ProviderAppContent() {
                 )
               )}
 
+              {/* SECTION: ALERTS & STORED NOTIFICATIONS */}
+              {activeSection === 'alerts' && (
+                providerUser ? (
+                  <ProviderNotificationsSection
+                    theme={theme}
+                    providerId={activeProviderId}
+                    bookings={bookings}
+                    onNavigateToBooking={(bNum) => {
+                      setBookingFilter('all');
+                      setActiveSection('bookings');
+                    }}
+                    onOpenRingtoneSettings={() => setRingtoneSettingsModalVisible(true)}
+                    onNavigateBack={() => setActiveSection('dashboard')}
+                  />
+                ) : (
+                  renderLockedState('Alerts & Notifications', 'Sign in to access your stored booking rings and dispatch notices.')
+                )
+              )}
+
               {/* SECTION: MY ACCOUNT & PROFILE */}
               {activeSection === 'profile' && (
                 providerUser ? renderProviderAccountProfile() : renderLockedState('My Account & Profile', 'Sign in to access your 4-pillar verification, profile settings, and linked bank account.')
@@ -4324,16 +4345,16 @@ function ProviderAppContent() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => setRingtoneSettingsModalVisible(true)}
+                onPress={() => setActiveSection('alerts')}
                 style={styles.bottomNavItem}
                 accessibilityRole="button"
-                accessibilityLabel="Alert & Ringtone Settings"
+                accessibilityLabel="Alert & Ringtone Notifications"
               >
                 <View>
                   <MaterialCommunityIcons
                     name="bell-ring-outline"
                     size={20}
-                    color={ringtoneSettingsModalVisible ? activeTheme.activeNavText : activeTheme.textSecondary}
+                    color={activeSection === 'alerts' ? activeTheme.activeNavText : activeTheme.textSecondary}
                   />
                   {pendingCount > 0 && (
                     <View style={[styles.tabBadge, { backgroundColor: '#FF9500' }]}>
@@ -4341,7 +4362,7 @@ function ProviderAppContent() {
                     </View>
                   )}
                 </View>
-                <Text style={[styles.bottomNavText, { color: ringtoneSettingsModalVisible ? activeTheme.activeNavText : activeTheme.textSecondary }]}>
+                <Text style={[styles.bottomNavText, { color: activeSection === 'alerts' ? activeTheme.activeNavText : activeTheme.textSecondary }]}>
                   Alerts
                 </Text>
               </TouchableOpacity>
@@ -4762,6 +4783,54 @@ function ProviderAppContent() {
                     name="chevron-right"
                     size={18}
                     color={activeSection === 'earnings' ? '#30D158' : activeTheme.textSecondary}
+                  />
+                </TouchableOpacity>
+
+                {/* 4c. Alerts & Notifications */}
+                <TouchableOpacity
+                  style={[
+                    styles.drawerMenuItem,
+                    activeSection === 'alerts' && [styles.drawerMenuItemActive, { backgroundColor: activeTheme.activeNavBg }],
+                  ]}
+                  onPress={() => {
+                    setActiveSection('alerts');
+                    closeRightDrawer();
+                  }}
+                >
+                  <View
+                    style={[
+                      styles.drawerMenuIconBox,
+                      {
+                        backgroundColor: activeSection === 'alerts' ? '#FF9500' : activeTheme.tableHeaderBg,
+                      },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="bell-ring-outline"
+                      size={20}
+                      color={activeSection === 'alerts' ? '#FFFFFF' : '#FF9500'}
+                    />
+                  </View>
+                  <View style={styles.drawerMenuTextBox}>
+                    <Text
+                      style={[
+                        styles.drawerMenuTitle,
+                        {
+                          color: activeSection === 'alerts' ? '#FF9500' : activeTheme.textPrimary,
+                          fontWeight: activeSection === 'alerts' ? '700' : '600',
+                        },
+                      ]}
+                    >
+                      Alerts & Notifications
+                    </Text>
+                    <Text style={[styles.drawerMenuSub, { color: activeTheme.textSecondary }]}>
+                      Stored bookings & sound alerts
+                    </Text>
+                  </View>
+                  <MaterialCommunityIcons
+                    name="chevron-right"
+                    size={18}
+                    color={activeSection === 'alerts' ? '#FF9500' : activeTheme.textSecondary}
                   />
                 </TouchableOpacity>
 
