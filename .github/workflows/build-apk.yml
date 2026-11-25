@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    name: Build Android APK
+    name: Build Android Release APK
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -39,15 +39,18 @@ jobs:
       - name: Prebuild Android project
         run: npx expo prebuild --platform android --clean
 
-      - name: Build Standalone Offline APK
+      - name: Configure Production Release Signing & Hermes Bundling
+        run: node scripts/configure-release-build.js
+
+      - name: Build Standalone Production Release APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug -PbundleInDebug=true --no-daemon
+          ./gradlew assembleRelease --no-daemon
 
       - name: Rename APK for Easy Identification
         run: |
-          cp android/app/build/outputs/apk/debug/app-debug.apk ServEasy-Provider.apk
+          cp android/app/build/outputs/apk/release/app-release.apk ServEasy-Provider.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
