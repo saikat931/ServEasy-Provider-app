@@ -50,11 +50,11 @@ export const ProudMadeInIndiaFooter: React.FC<ProudMadeInIndiaFooterProps> = ({ 
         <Text style={[styles.authorText, { color: authorColor }]}>by S.S.R</Text>
       </View>
 
-      {/* Skyline image — below text, as a visual watermark */}
+      {/* Skyline image — tucked closely beneath text */}
       <Image
         source={INDIA_SKYLINE_IMAGE}
         style={[styles.skylineImage, { tintColor: skylineTint }]}
-        resizeMode="cover"
+        resizeMode="contain"
       />
     </View>
   );
@@ -72,16 +72,18 @@ const styles = StyleSheet.create({
   divider: {
     width: '80%',
     height: 1,
-    marginBottom: 14,
+    marginBottom: 10,
     borderRadius: 1,
   },
   textBlock: {
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 0,
     paddingHorizontal: 16,
+    zIndex: 2,
   },
   proudlyText: {
     fontSize: 12,
+    lineHeight: 15,
     fontWeight: '500',
     letterSpacing: 0.4,
   },
@@ -92,6 +94,7 @@ const styles = StyleSheet.create({
   },
   indiaText: {
     fontSize: 22,
+    lineHeight: 26,
     fontWeight: '800',
     letterSpacing: -0.3,
   },
@@ -103,13 +106,15 @@ const styles = StyleSheet.create({
   },
   authorText: {
     fontSize: 11,
+    lineHeight: 14,
     fontWeight: '700',
     letterSpacing: 1.6,
-    marginTop: 1,
+    marginTop: 0,
     textTransform: 'uppercase',
   },
   skylineImage: {
     width: '100%',
     height: 160,
+    marginTop: -18,
   },
 });
