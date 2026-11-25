@@ -33,6 +33,7 @@ import { ProviderAuthModal } from './src/components/ProviderAuthModal';
 import { RingtoneSettingsModal } from './src/components/RingtoneSettingsModal';
 import { RingtoneService } from './src/services/RingtoneService';
 import { NotificationService } from './src/services/NotificationService';
+import { GreetingWeatherCard } from './src/components/GreetingWeatherCard';
 import {
   ProviderBooking,
   ProviderServiceItem,
@@ -405,6 +406,7 @@ function ProviderAppContent() {
 
   // Server live statistics state
   const [serverStats, setServerStats] = useState<ProviderStats | null>(null);
+  const [weatherRefreshNonce, setWeatherRefreshNonce] = useState<number>(0);
 
   // Load Live Data from Database
   const loadLiveData = useCallback(async (isPullRefresh: boolean = false, overrideProviderId?: number) => {
@@ -421,6 +423,7 @@ function ProviderAppContent() {
 
     if (isPullRefresh) {
       setRefreshing(true);
+      setWeatherRefreshNonce((n) => n + 1);
       // Auto-check for OTA app updates on pull-to-refresh
       if (!__DEV__) {
         Updates.checkForUpdateAsync()
@@ -1752,8 +1755,21 @@ function ProviderAppContent() {
 
   // ─── SECTION 1: DASHBOARD (OVERVIEW) ─────────────────────────────────────────
   const renderDashboardOverview = () => {
+    const savedLat = profileData?.latitude ? parseFloat(profileData.latitude) : undefined;
+    const savedLng = profileData?.longitude ? parseFloat(profileData.longitude) : undefined;
+
     return (
       <View style={styles.dashboardView}>
+        {/* Greeting, Live Clock & Local Weather Hero Card */}
+        <GreetingWeatherCard
+          theme={theme}
+          providerName={profileData?.full_name || providerUser?.first_name || profileData?.company_name}
+          latitude={liveGpsCoords?.latitude ?? savedLat}
+          longitude={liveGpsCoords?.longitude ?? savedLng}
+          addressHint={formAddress || profileData?.location_address}
+          refreshTrigger={weatherRefreshNonce}
+        />
+
         {/* Stats Row */}
         <View style={isMobile ? styles.statsContainerMobile : styles.statsContainer}>
           <GlassCard theme={theme} style={[styles.statCard, isMobile ? styles.statCardMobile : null]} intensity={activeTheme.glassIntensity}>
