@@ -391,6 +391,17 @@ function ProviderAppContent() {
 
     if (isPullRefresh) {
       setRefreshing(true);
+      // Auto-check for OTA app updates on pull-to-refresh
+      if (!__DEV__) {
+        Updates.checkForUpdateAsync()
+          .then(async (u) => {
+            if (u.isAvailable) {
+              await Updates.fetchUpdateAsync();
+              await Updates.reloadAsync();
+            }
+          })
+          .catch(() => {});
+      }
     }
     try {
       const [fetchedBookings, fetchedServices, fetchedProfile, fetchedCharges, fetchedStats] = await Promise.all([
