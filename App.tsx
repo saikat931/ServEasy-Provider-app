@@ -4323,6 +4323,29 @@ function ProviderAppContent() {
                 </Text>
               </TouchableOpacity>
 
+              <TouchableOpacity
+                onPress={() => setRingtoneSettingsModalVisible(true)}
+                style={styles.bottomNavItem}
+                accessibilityRole="button"
+                accessibilityLabel="Alert & Ringtone Settings"
+              >
+                <View>
+                  <MaterialCommunityIcons
+                    name="bell-ring-outline"
+                    size={20}
+                    color={ringtoneSettingsModalVisible ? activeTheme.activeNavText : activeTheme.textSecondary}
+                  />
+                  {pendingCount > 0 && (
+                    <View style={[styles.tabBadge, { backgroundColor: '#FF9500' }]}>
+                      <Text style={styles.tabBadgeText}>{pendingCount}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={[styles.bottomNavText, { color: ringtoneSettingsModalVisible ? activeTheme.activeNavText : activeTheme.textSecondary }]}>
+                  Alerts
+                </Text>
+              </TouchableOpacity>
+
               <TouchableOpacity onPress={() => setActiveSection('profile')} style={styles.bottomNavItem}>
                 <MaterialCommunityIcons
                   name="account-outline"
