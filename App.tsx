@@ -1760,16 +1760,6 @@ function ProviderAppContent() {
 
     return (
       <View style={styles.dashboardView}>
-        {/* Greeting, Live Clock & Local Weather Hero Card */}
-        <GreetingWeatherCard
-          theme={theme}
-          providerName={profileData?.full_name || providerUser?.first_name || profileData?.company_name}
-          latitude={liveGpsCoords?.latitude ?? savedLat}
-          longitude={liveGpsCoords?.longitude ?? savedLng}
-          addressHint={formAddress || profileData?.location_address}
-          refreshTrigger={weatherRefreshNonce}
-        />
-
         {/* Stats Row */}
         <View style={isMobile ? styles.statsContainerMobile : styles.statsContainer}>
           <GlassCard theme={theme} style={[styles.statCard, isMobile ? styles.statCardMobile : null]} intensity={activeTheme.glassIntensity}>
@@ -1808,6 +1798,16 @@ function ProviderAppContent() {
             </Text>
           </GlassCard>
         </View>
+
+        {/* Greeting, Live Clock & Local Weather Hero Card */}
+        <GreetingWeatherCard
+          theme={theme}
+          providerName={profileData?.full_name || providerUser?.first_name || profileData?.company_name}
+          latitude={liveGpsCoords?.latitude ?? savedLat}
+          longitude={liveGpsCoords?.longitude ?? savedLng}
+          addressHint={formAddress || profileData?.location_address}
+          refreshTrigger={weatherRefreshNonce}
+        />
 
         {/* Live GPS Broadcasting Card for In-Progress Jobs */}
         {activeInProgressJob && (
