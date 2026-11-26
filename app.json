@@ -75,7 +75,7 @@
         "expo-channel-name": "preview"
       }
     },
-    "runtimeVersion": "1.0.8",
+    "runtimeVersion": "1.0.1",
     "extra": {
       "eas": {
         "projectId": "fc1a7de7-01d6-47ae-8bd8-66afc8dfade4"

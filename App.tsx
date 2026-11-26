@@ -1636,36 +1636,11 @@ function ProviderAppContent() {
           text: 'Cancel',
           style: 'cancel',
         },
-      ],
-      { cancelable: true }
+      ]
     );
   };
 
   const handlePickAndUploadAvatar = async (source: 'camera' | 'gallery') => {
-    // Check if the native ImagePicker module is actually compiled into the installed APK
-    const hasNativePicker = Boolean(
-      (NativeModules && (NativeModules.ExponentImagePicker || NativeModules.ImagePicker)) ||
-      (global as any)?.expo?.modules?.ExponentImagePicker
-    );
-
-    if (!hasNativePicker) {
-      const displayName = profileData?.company_name || profileData?.full_name || providerUser?.first_name || 'Service Provider';
-      const uploadUrl = `https://scalepixel.onrender.com/upload-avatar.php?provider_id=${activeProviderId}&name=${encodeURIComponent(displayName)}`;
-
-      Alert.alert(
-        'APK Update Required for Native Camera',
-        'Direct camera and gallery inside the app require the newly compiled ServEasy Provider APK.\n\nIn the meantime, you can upload right now via ScalePixel:',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Upload Photo Now 🚀',
-            onPress: () => Linking.openURL(uploadUrl),
-          },
-        ]
-      );
-      return;
-    }
-
     let ImagePicker: any = null;
     try {
       ImagePicker = require('expo-image-picker');
@@ -1673,7 +1648,14 @@ function ProviderAppContent() {
       ImagePicker = null;
     }
 
-    if (!ImagePicker) return;
+    if (!ImagePicker || (!ImagePicker.launchImageLibraryAsync && !ImagePicker.launchCameraAsync)) {
+      Alert.alert(
+        'APK Update Required',
+        'Direct in-app camera and gallery require the updated ServEasy Provider APK (v1.0.8).\n\nPlease install the updated APK on your device to pick photos directly inside the app.',
+        [{ text: 'OK', style: 'cancel' }]
+      );
+      return;
+    }
 
     try {
       let result;
@@ -1710,13 +1692,13 @@ function ProviderAppContent() {
       setIsUploadingAvatar(true);
 
       // In-app background processing: send directly to ScalePixel Quantum Engine
-      const uploadResult = await uploadProviderAvatarToScalePixel(selectedUri, activeProviderId);
+      const uploadResult = await uploadProviderAvatarToScalePixel(selectedUri, activeProviderId!);
 
       if (uploadResult.success && uploadResult.downloadUrl) {
         const newAvatarUrl = uploadResult.downloadUrl;
 
         // Persist avatar in ServEasy backend database
-        await updateProviderAvatarApi(activeProviderId, newAvatarUrl);
+        await updateProviderAvatarApi(activeProviderId!, newAvatarUrl);
 
         // Update local React state instantly
         setProfileData((prev) => (prev ? { ...prev, avatar_url: newAvatarUrl } : prev));
@@ -4600,7 +4582,7 @@ function ProviderAppContent() {
                   style={styles.drawerHeaderProfile}
                   onPress={() => {
                     closeRightDrawer();
-                    setActiveSection('account');
+                    setActiveSection('profile');
                   }}
                   activeOpacity={0.7}
                   accessibilityLabel="View profile"
