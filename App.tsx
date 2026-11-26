@@ -344,6 +344,7 @@ function ProviderAppContent() {
   // Profile Form Edit States
   const [formFullName, setFormFullName] = useState('');
   const [isUploadingAvatar, setIsUploadingAvatar] = useState<boolean>(false);
+  const [avatarPickerModalVisible, setAvatarPickerModalVisible] = useState<boolean>(false);
   const [formCompanyName, setFormCompanyName] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formPhone, setFormPhone] = useState('');
@@ -1619,25 +1620,7 @@ function ProviderAppContent() {
       Alert.alert('Sign In Required', 'Please sign in to update your profile photo.');
       return;
     }
-
-    Alert.alert(
-      'Profile Photo',
-      'Choose an option to update your profile picture:',
-      [
-        {
-          text: '📷 Take Photo',
-          onPress: () => handlePickAndUploadAvatar('camera'),
-        },
-        {
-          text: '🖼️ Choose from Gallery',
-          onPress: () => handlePickAndUploadAvatar('gallery'),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ]
-    );
+    setAvatarPickerModalVisible(true);
   };
 
   const handlePickAndUploadAvatar = async (source: 'camera' | 'gallery') => {
@@ -6861,6 +6844,173 @@ function ProviderAppContent() {
                 </TouchableOpacity>
               </View>
             </Animated.View>
+          </View>
+        </Modal>
+
+        {/* Modern & Gorgeous Avatar Picker Bottom Sheet */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          statusBarTranslucent={true}
+          visible={avatarPickerModalVisible}
+          onRequestClose={() => setAvatarPickerModalVisible(false)}
+        >
+          <View style={styles.bottomSheetRoot}>
+            <TouchableOpacity
+              style={styles.bottomSheetBackdrop}
+              activeOpacity={1}
+              onPress={() => setAvatarPickerModalVisible(false)}
+            />
+
+            <View
+              style={[
+                styles.bottomSheetCard,
+                {
+                  backgroundColor: theme === 'dark' ? '#11141C' : '#FFFFFF',
+                  borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(15, 23, 42, 0.08)',
+                  paddingBottom: Math.max(insets.bottom, 16) + 16,
+                  width: '100%',
+                },
+              ]}
+            >
+              {/* Drag Handle Indicator */}
+              <View
+                style={[
+                  styles.bottomSheetHandle,
+                  { backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.25)' : 'rgba(15, 23, 42, 0.2)' },
+                ]}
+              />
+
+              {/* Header Icon & Title */}
+              <View
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 28,
+                  backgroundColor: theme === 'dark' ? 'rgba(5, 194, 121, 0.15)' : 'rgba(5, 194, 121, 0.12)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(5, 194, 121, 0.35)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 12,
+                }}
+              >
+                <MaterialCommunityIcons name="camera-iris" size={28} color="#05c279" />
+              </View>
+
+              <Text style={{ fontSize: 20, fontWeight: '800', color: activeTheme.textPrimary, marginBottom: 6, textAlign: 'center' }}>
+                Profile Photo
+              </Text>
+              <Text style={{ fontSize: 13, color: activeTheme.textSecondary, textAlign: 'center', marginBottom: 22, paddingHorizontal: 16 }}>
+                Choose an option to update your profile photo. ScalePixel will optimize it automatically in the background.
+              </Text>
+
+              {/* Action 1: Take Photo */}
+              <TouchableOpacity
+                style={{
+                  width: '100%',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 14,
+                  paddingHorizontal: 16,
+                  borderRadius: 16,
+                  backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.04)',
+                  borderWidth: 1,
+                  borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.06)',
+                  marginBottom: 10,
+                }}
+                activeOpacity={0.7}
+                onPress={() => {
+                  setAvatarPickerModalVisible(false);
+                  setTimeout(() => handlePickAndUploadAvatar('camera'), 200);
+                }}
+              >
+                <View
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    backgroundColor: 'rgba(0, 229, 255, 0.12)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 14,
+                  }}
+                >
+                  <MaterialCommunityIcons name="camera" size={22} color="#00E5FF" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: activeTheme.textPrimary, marginBottom: 2 }}>
+                    Take Photo
+                  </Text>
+                  <Text style={{ fontSize: 12, color: activeTheme.textSecondary }}>
+                    Capture a new picture with camera
+                  </Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={22} color={activeTheme.textSecondary} />
+              </TouchableOpacity>
+
+              {/* Action 2: Choose from Gallery */}
+              <TouchableOpacity
+                style={{
+                  width: '100%',
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 14,
+                  paddingHorizontal: 16,
+                  borderRadius: 16,
+                  backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(15, 23, 42, 0.04)',
+                  borderWidth: 1,
+                  borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.06)',
+                  marginBottom: 16,
+                }}
+                activeOpacity={0.7}
+                onPress={() => {
+                  setAvatarPickerModalVisible(false);
+                  setTimeout(() => handlePickAndUploadAvatar('gallery'), 200);
+                }}
+              >
+                <View
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 22,
+                    backgroundColor: 'rgba(5, 194, 121, 0.14)',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 14,
+                  }}
+                >
+                  <MaterialCommunityIcons name="image-multiple" size={22} color="#05c279" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '700', color: activeTheme.textPrimary, marginBottom: 2 }}>
+                    Choose from Gallery
+                  </Text>
+                  <Text style={{ fontSize: 12, color: activeTheme.textSecondary }}>
+                    Select an existing photo from gallery
+                  </Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={22} color={activeTheme.textSecondary} />
+              </TouchableOpacity>
+
+              {/* Cancel Button */}
+              <TouchableOpacity
+                style={{
+                  width: '100%',
+                  paddingVertical: 14,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(15, 23, 42, 0.06)',
+                }}
+                activeOpacity={0.7}
+                onPress={() => setAvatarPickerModalVisible(false)}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '700', color: activeTheme.textPrimary }}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </Modal>
       </View>
