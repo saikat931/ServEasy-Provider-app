@@ -4076,7 +4076,7 @@ function ProviderAppContent() {
                     <MaterialCommunityIcons name="sync" size={16} color={activeTheme.iconColor} />
                   </TouchableOpacity>
                 </View>
-              ) : (
+              ) : !providerUser ? (
                 <View style={styles.sectionHeaderRow}>
                   <View>
                     <Text style={[styles.sectionTitle, { color: activeTheme.textPrimary }]}>
@@ -4090,31 +4090,19 @@ function ProviderAppContent() {
                       {activeSection === 'verification' && 'ID Verification'}
                     </Text>
                     <Text style={[styles.providerSubHeader, { color: activeTheme.textSecondary }]}>
-                      {providerUser
-                        ? `${profileData?.company_name || profileData?.full_name || providerUser.first_name} • Provider #${activeProviderId}`
-                        : 'Join the ServEasy Service Provider Network'}
+                      Join the ServEasy Service Provider Network
                     </Text>
                   </View>
 
-                  {/* Fast Sync Button if logged in, or Sign In button if logged out */}
-                  {providerUser ? (
-                    <TouchableOpacity
-                      onPress={() => loadLiveData(true)}
-                      style={[styles.syncButtonTop, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}
-                    >
-                      <MaterialCommunityIcons name="sync" size={16} color={activeTheme.iconColor} />
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      onPress={() => setAuthModalVisible(true)}
-                      style={[styles.topHeaderSignInBtn, { backgroundColor: '#0084FF' }]}
-                    >
-                      <MaterialCommunityIcons name="login" size={14} color="#FFFFFF" />
-                      <Text style={styles.topHeaderSignInBtnText}>Sign In</Text>
-                    </TouchableOpacity>
-                  )}
+                  <TouchableOpacity
+                    onPress={() => setAuthModalVisible(true)}
+                    style={[styles.topHeaderSignInBtn, { backgroundColor: '#0084FF' }]}
+                  >
+                    <MaterialCommunityIcons name="login" size={14} color="#FFFFFF" />
+                    <Text style={styles.topHeaderSignInBtnText}>Sign In</Text>
+                  </TouchableOpacity>
                 </View>
-              )}
+              ) : null}
 
               {/* SECTION: DASHBOARD */}
               {activeSection === 'dashboard' && (

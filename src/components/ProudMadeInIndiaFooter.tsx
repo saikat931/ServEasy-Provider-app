@@ -28,6 +28,7 @@ export const ProudMadeInIndiaFooter: React.FC<ProudMadeInIndiaFooterProps> = ({ 
 
   // Divider line
   const dividerColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.09)';
+  const copyrightColor = isDark ? 'rgba(148, 163, 184, 0.58)' : 'rgba(71, 85, 105, 0.68)';
 
   return (
     <View style={styles.container}>
@@ -56,6 +57,11 @@ export const ProudMadeInIndiaFooter: React.FC<ProudMadeInIndiaFooterProps> = ({ 
         style={[styles.skylineImage, { tintColor: skylineTint }]}
         resizeMode="contain"
       />
+
+      {/* Copyright notice */}
+      <Text style={[styles.copyrightText, { color: copyrightColor }]}>
+        © 2026 ServEasy. All Rights Reserved.
+      </Text>
     </View>
   );
 };
@@ -64,7 +70,8 @@ const styles = StyleSheet.create({
   container: {
     marginTop: 'auto',
     paddingTop: 8,
-    marginBottom: -24,
+    paddingBottom: 6,
+    marginBottom: -8,
     marginHorizontal: -16,
     alignItems: 'center',
     overflow: 'hidden',
@@ -116,5 +123,13 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 160,
     marginTop: -18,
+  },
+  copyrightText: {
+    fontSize: 10.5,
+    fontWeight: '500',
+    letterSpacing: 0.3,
+    marginTop: 6,
+    textAlign: 'center',
+    paddingHorizontal: 16,
   },
 });
