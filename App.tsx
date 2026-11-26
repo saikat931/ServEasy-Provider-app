@@ -39,6 +39,7 @@ import { ProudMadeInIndiaFooter } from './src/components/ProudMadeInIndiaFooter'
 import { EarningsAnalyseSection } from './src/components/EarningsAnalyseSection';
 import { PromoBannerCarousel } from './src/components/PromoBannerCarousel';
 import { ProviderNotificationsSection } from './src/components/ProviderNotificationsSection';
+import { getServiceIcon } from './src/services/serviceIcons';
 import {
   ProviderBooking,
   ProviderServiceItem,
@@ -4115,7 +4116,7 @@ function ProviderAppContent() {
                   <View style={styles.fullWidthSection}>
                     <View style={[styles.sectionHeaderRow, isMobile && styles.sectionHeaderRowMobile]}>
                       <Text style={[styles.sectionSubtitle, isMobile && styles.sectionSubtitleMobile, { color: activeTheme.textSecondary }]}>
-                        Add, update and configure your offered cleaning services.
+                        Add, update and configure your offered services.
                       </Text>
                       <TouchableOpacity
                         onPress={() => setAddServiceModalVisible(true)}
@@ -4155,13 +4156,7 @@ function ProviderAppContent() {
                               <View style={styles.serviceDetailHeader}>
                                 <View style={styles.serviceDetailIconContainer}>
                                   <MaterialCommunityIcons
-                                    name={
-                                      item.subcategory === 'Car Wash'
-                                        ? 'car-wash'
-                                        : item.subcategory.toLowerCase().includes('bike')
-                                        ? 'motorbike'
-                                        : 'layers-outline'
-                                    }
+                                    name={getServiceIcon(item.name, item.subcategory)}
                                     size={22}
                                     color={activeTheme.iconColor}
                                   />
@@ -5799,13 +5794,7 @@ function ProviderAppContent() {
                         <Text style={[styles.modalSectionLabel, { color: activeTheme.textSecondary }]}>SERVICE CATEGORY</Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 6 }}>
                           <MaterialCommunityIcons
-                            name={
-                              quickViewService.subcategory === 'Car Wash'
-                                ? 'car-wash'
-                                : quickViewService.subcategory.toLowerCase().includes('bike')
-                                ? 'motorbike'
-                                : 'layers-outline'
-                            }
+                            name={getServiceIcon(quickViewService.name, quickViewService.subcategory)}
                             size={18}
                             color="#0084FF"
                           />
@@ -5941,7 +5930,15 @@ function ProviderAppContent() {
                     onChangeText={setEditServiceName}
                   />
 
-                  <Text style={[styles.modalInputLabel, { color: activeTheme.textSecondary }]}>Category / Subcategory</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text style={[styles.modalInputLabel, { color: activeTheme.textSecondary }]}>Category / Subcategory</Text>
+                    {editServiceSub ? (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                        <MaterialCommunityIcons name={getServiceIcon(editServiceName, editServiceSub)} size={14} color="#0084FF" />
+                        <Text style={{ fontSize: 11, color: '#0084FF', fontWeight: '600' }}>Icon Preview</Text>
+                      </View>
+                    ) : null}
+                  </View>
                   <TextInput
                     style={[styles.modalInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder }]}
                     placeholder="e.g. Bike Wash, Car Wash"
@@ -5952,19 +5949,37 @@ function ProviderAppContent() {
 
                   {/* Category Shortcut Chips */}
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
-                    {['Bike Wash', 'Car Wash', 'Vehicle Servicing', 'Vehicle Parts', 'Garage Service', 'Home Maintenance'].map((cat) => (
+                    {[
+                      'Bike Wash',
+                      'Car Wash',
+                      'Vehicle Servicing',
+                      'Vehicle Parts',
+                      'Garage Service',
+                      'Home Maintenance',
+                      'Bathroom Wash',
+                      'Kitchen Wash',
+                      'Room Decor',
+                    ].map((cat) => (
                       <TouchableOpacity
                         key={cat}
                         onPress={() => setEditServiceSub(cat)}
                         style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 4,
                           paddingHorizontal: 8,
-                          paddingVertical: 4,
+                          paddingVertical: 5,
                           borderRadius: 6,
                           backgroundColor: editServiceSub === cat ? '#0084FF' : activeTheme.tableHeaderBg,
                           borderWidth: 1,
                           borderColor: editServiceSub === cat ? '#0084FF' : activeTheme.cardBorder,
                         }}
                       >
+                        <MaterialCommunityIcons
+                          name={getServiceIcon(cat, cat)}
+                          size={12}
+                          color={editServiceSub === cat ? '#FFFFFF' : activeTheme.textSecondary}
+                        />
                         <Text style={{ fontSize: 10, fontWeight: '700', color: editServiceSub === cat ? '#FFFFFF' : activeTheme.textSecondary }}>
                           {cat}
                         </Text>
@@ -6098,7 +6113,7 @@ function ProviderAppContent() {
               tint="dark"
               style={[styles.modalContent, { backgroundColor: theme === 'dark' ? 'rgba(25, 27, 30, 0.9)' : 'rgba(255, 255, 255, 0.95)', borderColor: activeTheme.cardBorder }]}
             >
-              <Text style={[styles.modalTitle, { color: activeTheme.textPrimary }]}>Add Cleaning Service</Text>
+              <Text style={[styles.modalTitle, { color: activeTheme.textPrimary }]}>Add New Service</Text>
 
               <View style={styles.modalForm}>
                 <Text style={[styles.modalInputLabel, { color: activeTheme.textSecondary }]}>Service Name</Text>
@@ -6110,7 +6125,15 @@ function ProviderAppContent() {
                   onChangeText={setNewServiceName}
                 />
 
-                <Text style={[styles.modalInputLabel, { color: activeTheme.textSecondary }]}>Subcategory</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Text style={[styles.modalInputLabel, { color: activeTheme.textSecondary }]}>Subcategory</Text>
+                  {newServiceSub ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 4 }}>
+                      <MaterialCommunityIcons name={getServiceIcon(newServiceName, newServiceSub)} size={14} color="#0084FF" />
+                      <Text style={{ fontSize: 11, color: '#0084FF', fontWeight: '600' }}>Icon Preview</Text>
+                    </View>
+                  ) : null}
+                </View>
                 <TextInput
                   style={[styles.modalInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder }]}
                   placeholder="e.g. Car Wash, Bike Wash"
@@ -6118,6 +6141,46 @@ function ProviderAppContent() {
                   value={newServiceSub}
                   onChangeText={setNewServiceSub}
                 />
+
+                {/* Category Shortcut Chips */}
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                  {[
+                    'Bike Wash',
+                    'Car Wash',
+                    'Vehicle Servicing',
+                    'Vehicle Parts',
+                    'Garage Service',
+                    'Home Maintenance',
+                    'Bathroom Wash',
+                    'Kitchen Wash',
+                    'Room Decor',
+                  ].map((cat) => (
+                    <TouchableOpacity
+                      key={cat}
+                      onPress={() => setNewServiceSub(cat)}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 4,
+                        paddingHorizontal: 8,
+                        paddingVertical: 5,
+                        borderRadius: 6,
+                        backgroundColor: newServiceSub === cat ? '#0084FF' : activeTheme.tableHeaderBg,
+                        borderWidth: 1,
+                        borderColor: newServiceSub === cat ? '#0084FF' : activeTheme.cardBorder,
+                      }}
+                    >
+                      <MaterialCommunityIcons
+                        name={getServiceIcon(cat, cat)}
+                        size={12}
+                        color={newServiceSub === cat ? '#FFFFFF' : activeTheme.textSecondary}
+                      />
+                      <Text style={{ fontSize: 10, fontWeight: '700', color: newServiceSub === cat ? '#FFFFFF' : activeTheme.textSecondary }}>
+                        {cat}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
 
                 <Text style={[styles.modalInputLabel, { color: activeTheme.textSecondary }]}>Rate (INR)</Text>
                 <TextInput
