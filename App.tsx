@@ -2469,14 +2469,14 @@ function ProviderAppContent() {
         {/* 2. Provider Identity Card (Matches Web Left Card in profile.php) */}
         <GlassCard theme={theme} style={styles.webProfileCard} intensity={activeTheme.glassIntensity}>
           <View style={styles.webAvatarContainer}>
-            {/* Clickable Profile Avatar with Pencil Icon Badge */}
+            {/* Top Rounded Profile Avatar with Pencil Icon Badge */}
             <TouchableOpacity
               style={styles.webAvatarOuter}
               onPress={promptAvatarSource}
               disabled={isUploadingAvatar}
               activeOpacity={0.8}
               accessibilityRole="button"
-              accessibilityLabel="Click to upload profile photo"
+              accessibilityLabel="Upload or change profile picture"
             >
               <View style={styles.webAvatarWrap}>
                 <Image
@@ -2491,22 +2491,10 @@ function ProviderAppContent() {
                   </View>
                 )}
               </View>
-              {/* Pencil Icon Edit Badge */}
+              {/* Pencil Icon Badge */}
               <View style={styles.avatarEditBadge}>
                 <MaterialCommunityIcons name="pencil" size={16} color="#FFFFFF" />
               </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.changePhotoBtn}
-              onPress={promptAvatarSource}
-              disabled={isUploadingAvatar}
-              activeOpacity={0.7}
-            >
-              <MaterialCommunityIcons name="pencil" size={14} color="#05c279" />
-              <Text style={styles.changePhotoBtnText}>
-                {isUploadingAvatar ? 'Optimizing with ScalePixel...' : 'Edit Profile Photo'}
-              </Text>
             </TouchableOpacity>
 
             <Text style={[styles.webAvatarName, { color: activeTheme.textPrimary }]}>
@@ -2619,35 +2607,6 @@ function ProviderAppContent() {
           </View>
 
           <View style={styles.formContainer}>
-            {/* Profile Photo Upload Field */}
-            <View style={styles.webFormRow}>
-              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Profile Photo:</Text>
-              <View style={styles.formAvatarUploadRow}>
-                <Image
-                  source={{
-                    uri: profileData?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=05c279&color=fff&size=160&bold=true`,
-                  }}
-                  style={styles.formAvatarThumb}
-                />
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <TouchableOpacity
-                    style={styles.formUploadPhotoBtn}
-                    onPress={promptAvatarSource}
-                    disabled={isUploadingAvatar}
-                    activeOpacity={0.8}
-                  >
-                    <MaterialCommunityIcons name="camera" size={15} color="#FFFFFF" />
-                    <Text style={styles.formUploadPhotoBtnText}>
-                      {isUploadingAvatar ? 'Optimizing with ScalePixel...' : 'Upload Profile Photo'}
-                    </Text>
-                  </TouchableOpacity>
-                  <Text style={[styles.formAvatarHint, { color: activeTheme.textSecondary }]}>
-                    ScalePixel Quantum Engine auto-crops 1:1 and optimizes to JPEG (600×600).
-                  </Text>
-                </View>
-              </View>
-            </View>
-
             {/* Full Name */}
             <View style={styles.webFormRow}>
               <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Full Name:</Text>
@@ -4525,9 +4484,12 @@ function ProviderAppContent() {
               <View style={[styles.rightDrawerHeader, { borderBottomColor: activeTheme.cardBorder }]}>
                 <TouchableOpacity
                   style={styles.drawerHeaderProfile}
-                  onPress={promptAvatarSource}
+                  onPress={() => {
+                    closeRightDrawer();
+                    setActiveSection('account');
+                  }}
                   activeOpacity={0.7}
-                  accessibilityLabel="Change profile photo"
+                  accessibilityLabel="View profile"
                 >
                   <View style={{ position: 'relative' }}>
                     {providerUser ? (
@@ -4554,21 +4516,11 @@ function ProviderAppContent() {
                         <MaterialCommunityIcons name="account" size={24} color={activeTheme.activeNavText} />
                       </View>
                     )}
-                    {providerUser && (
-                      <View style={styles.drawerAvatarEditBadge}>
-                        <MaterialCommunityIcons name="pencil" size={10} color="#FFFFFF" />
-                      </View>
-                    )}
                   </View>
                   <View style={styles.drawerProfileInfo}>
                     <Text style={[styles.drawerProviderName, { color: activeTheme.textPrimary }]} numberOfLines={1}>
                       {profileData?.company_name || profileData?.full_name || providerUser?.first_name || 'ServEasy Provider'}
                     </Text>
-                    {providerUser && (
-                      <Text style={{ fontSize: 11, color: '#05c279', fontWeight: '700', marginTop: 2 }}>
-                        Tap to edit photo ✏️
-                      </Text>
-                    )}
                     <View style={styles.drawerBadgeRow}>
                       <View
                         style={[
