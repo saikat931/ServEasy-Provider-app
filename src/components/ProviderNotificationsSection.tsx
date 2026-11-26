@@ -178,44 +178,7 @@ export const ProviderNotificationsSection: React.FC<ProviderNotificationsSection
 
   return (
     <View style={styles.container}>
-      {/* Top Header */}
-      <View style={styles.headerRow}>
-        {onNavigateBack && (
-          <TouchableOpacity
-            onPress={onNavigateBack}
-            style={[styles.backBtn, { borderColor: cardBorder }]}
-            activeOpacity={0.7}
-          >
-            <MaterialCommunityIcons name="arrow-left" size={20} color={primaryText} />
-          </TouchableOpacity>
-        )}
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Text style={[styles.headerTitle, { color: primaryText }]}>Alerts & Notifications</Text>
-            {unreadCount > 0 && (
-              <View style={styles.unreadBadge}>
-                <Text style={styles.unreadBadgeText}>{unreadCount} New</Text>
-              </View>
-            )}
-          </View>
-          <Text style={[styles.headerSubtitle, { color: secondaryText }]}>
-            Stored live booking rings, dispatches & system alerts
-          </Text>
-        </View>
-
-        {onOpenRingtoneSettings && (
-          <TouchableOpacity
-            onPress={onOpenRingtoneSettings}
-            style={[styles.soundSettingsBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.06)' }]}
-            activeOpacity={0.75}
-            accessibilityLabel="Ringtone Settings"
-          >
-            <MaterialCommunityIcons name="tune" size={18} color="#0084FF" />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {/* Filter Chips + Mark All Read */}
+      {/* Filter Chips + Tune Ringtone Settings + Mark All Read */}
       <View style={styles.controlsRow}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterChipsRow}>
           {[
@@ -253,12 +216,25 @@ export const ProviderNotificationsSection: React.FC<ProviderNotificationsSection
           })}
         </ScrollView>
 
-        {unreadCount > 0 && (
-          <TouchableOpacity onPress={markAllRead} style={styles.markReadBtn} activeOpacity={0.7}>
-            <MaterialCommunityIcons name="check-all" size={14} color="#0084FF" />
-            <Text style={styles.markReadText}>Mark Read</Text>
-          </TouchableOpacity>
-        )}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {unreadCount > 0 && (
+            <TouchableOpacity onPress={markAllRead} style={styles.markReadBtn} activeOpacity={0.7}>
+              <MaterialCommunityIcons name="check-all" size={14} color="#0084FF" />
+              <Text style={styles.markReadText}>Mark Read</Text>
+            </TouchableOpacity>
+          )}
+
+          {onOpenRingtoneSettings && (
+            <TouchableOpacity
+              onPress={onOpenRingtoneSettings}
+              style={[styles.soundSettingsBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.06)' }]}
+              activeOpacity={0.75}
+              accessibilityLabel="Ringtone Settings"
+            >
+              <MaterialCommunityIcons name="tune" size={18} color="#0084FF" />
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Notifications List */}
