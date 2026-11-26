@@ -26,6 +26,8 @@ import { BlurView } from 'expo-blur';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import * as Updates from 'expo-updates';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 
 // Import our custom reusable components
 import { GlassCard } from './src/components/GlassCard';
@@ -67,7 +69,9 @@ import {
   createProviderServiceApi,
   updateProviderLiveLocationApi,
   fetchProviderLiveLocationApi,
+  updateProviderAvatarApi,
 } from './src/services/api';
+import { uploadProviderAvatarToScalePixel } from './src/services/scalePixelService';
 import { reverseGeocodeCoords, acquireDeviceLocation, getGoogleMapTileUrl, DoorstepAddressResult } from './src/services/locationHelper';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -321,6 +325,7 @@ function ProviderAppContent() {
 
   // Profile Form Edit States
   const [formFullName, setFormFullName] = useState('');
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState<boolean>(false);
   const [formCompanyName, setFormCompanyName] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formPhone, setFormPhone] = useState('');
@@ -1589,6 +1594,132 @@ function ProviderAppContent() {
     }
   };
 
+  // ─── Provider Avatar Upload via ScalePixel ──────────────────────────────────
+  const promptAvatarSource = () => {
+    if (!activeProviderId) {
+      showCustomAlert('Sign In Required', 'Please sign in to update your profile photo.');
+      return;
+    }
+    showCustomAlert(
+      'Update Profile Photo',
+      'Select how you would like to provide your profile picture for ScalePixel optimization:',
+      [
+        {
+          text: 'Camera 📷',
+          style: 'default',
+          onPress: () => handlePickAndUploadAvatar('camera'),
+        },
+        {
+          text: 'Gallery 🖼️',
+          style: 'default',
+          onPress: () => handlePickAndUploadAvatar('gallery'),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
+  };
+
+  const handlePickAndUploadAvatar = async (source: 'camera' | 'gallery') => {
+    if (!activeProviderId) return;
+
+    try {
+      let selectedUri: string | null = null;
+      let usedPicker = false;
+
+      // 1. Try ImagePicker if native module is present in the build
+      try {
+        if (source === 'camera') {
+          const perm = await ImagePicker.requestCameraPermissionsAsync();
+          if (perm.granted) {
+            usedPicker = true;
+            const pickerResult = await ImagePicker.launchCameraAsync({
+              allowsEditing: true,
+              aspect: [1, 1],
+              quality: 0.85,
+            });
+            if (!pickerResult.canceled && pickerResult.assets && pickerResult.assets[0]?.uri) {
+              selectedUri = pickerResult.assets[0].uri;
+            }
+          }
+        } else {
+          const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (perm.granted) {
+            usedPicker = true;
+            const pickerResult = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ['images'],
+              allowsEditing: true,
+              aspect: [1, 1],
+              quality: 0.85,
+            });
+            if (!pickerResult.canceled && pickerResult.assets && pickerResult.assets[0]?.uri) {
+              selectedUri = pickerResult.assets[0].uri;
+            }
+          }
+        }
+      } catch (nativeErr) {
+        console.log('[Avatar] ImagePicker native module unavailable in current build, falling back to DocumentPicker:', nativeErr);
+      }
+
+      // 2. Fallback to DocumentPicker (which is compiled into existing 1.0.8 APK)
+      if (!selectedUri && !usedPicker) {
+        try {
+          const docRes = await DocumentPicker.getDocumentAsync({
+            type: ['image/*'],
+            copyToCacheDirectory: true,
+          });
+          if (!docRes.canceled && docRes.assets && docRes.assets[0]?.uri) {
+            selectedUri = docRes.assets[0].uri;
+          }
+        } catch (docErr) {
+          console.log('[Avatar] DocumentPicker fallback error:', docErr);
+        }
+      }
+
+      if (!selectedUri) return;
+
+      setIsUploadingAvatar(true);
+
+      const scaleRes = await uploadProviderAvatarToScalePixel(selectedUri, activeProviderId);
+
+      if (!scaleRes.success || !scaleRes.downloadUrl) {
+        setIsUploadingAvatar(false);
+        showCustomAlert('ScalePixel Error', scaleRes.message || 'Failed to optimize avatar image.');
+        return;
+      }
+
+      const optimizedUrl = scaleRes.downloadUrl;
+
+      // Update backend database
+      const saveRes = await updateProviderAvatarApi(activeProviderId, optimizedUrl);
+      setIsUploadingAvatar(false);
+
+      if (saveRes.success) {
+        // Update local profile state
+        setProfileData((prev) => (prev ? { ...prev, avatar_url: optimizedUrl } : null));
+
+        if (providerUser) {
+          const updatedUser = { ...providerUser, avatar_url: optimizedUrl };
+          setProviderUser(updatedUser);
+          AsyncStorage.setItem('serveasy_provider_user', JSON.stringify(updatedUser)).catch(() => {});
+        }
+
+        const savedStats = scaleRes.savedPercent ? ` (${scaleRes.savedPercent}% saved)` : '';
+        showCustomAlert(
+          'Photo Updated! ✨',
+          `Avatar processed by ScalePixel and saved successfully!${savedStats}`
+        );
+      } else {
+        showCustomAlert('Save Error', saveRes.message || 'Could not link avatar to your account.');
+      }
+    } catch (err: any) {
+      setIsUploadingAvatar(false);
+      showCustomAlert('Error', err?.message || 'An error occurred during photo upload.');
+    }
+  };
+
   const handleAddService = async () => {
     if (!newServiceName || !newServiceSub || !newServiceRate || !newServiceDuration) {
       Alert.alert('Missing Info', 'Please fill in all service details.');
@@ -2431,14 +2562,41 @@ function ProviderAppContent() {
         {/* 2. Provider Identity Card (Matches Web Left Card in profile.php) */}
         <GlassCard theme={theme} style={styles.webProfileCard} intensity={activeTheme.glassIntensity}>
           <View style={styles.webAvatarContainer}>
-            <View style={styles.webAvatarWrap}>
-              <Image
-                source={{
-                  uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=05c279&color=fff&size=160&bold=true`,
-                }}
-                style={styles.webAvatarImg}
-              />
+            <View style={styles.webAvatarOuter}>
+              <View style={styles.webAvatarWrap}>
+                <Image
+                  source={{
+                    uri: profileData?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=05c279&color=fff&size=160&bold=true`,
+                  }}
+                  style={styles.webAvatarImg}
+                />
+                {isUploadingAvatar && (
+                  <View style={styles.avatarLoadingOverlay}>
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  </View>
+                )}
+              </View>
+              <TouchableOpacity
+                style={styles.avatarEditBadge}
+                onPress={promptAvatarSource}
+                disabled={isUploadingAvatar}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons name="camera" size={15} color="#FFFFFF" />
+              </TouchableOpacity>
             </View>
+
+            <TouchableOpacity
+              style={styles.changePhotoBtn}
+              onPress={promptAvatarSource}
+              disabled={isUploadingAvatar}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons name="image-edit-outline" size={14} color="#05c279" />
+              <Text style={styles.changePhotoBtnText}>
+                {isUploadingAvatar ? 'Optimizing with ScalePixel...' : 'Change Profile Photo'}
+              </Text>
+            </TouchableOpacity>
 
             <Text style={[styles.webAvatarName, { color: activeTheme.textPrimary }]}>
               {displayName}
@@ -2522,6 +2680,35 @@ function ProviderAppContent() {
           </View>
 
           <View style={styles.formContainer}>
+            {/* Profile Photo Upload Field */}
+            <View style={styles.webFormRow}>
+              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Profile Photo:</Text>
+              <View style={styles.formAvatarUploadRow}>
+                <Image
+                  source={{
+                    uri: profileData?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=05c279&color=fff&size=160&bold=true`,
+                  }}
+                  style={styles.formAvatarThumb}
+                />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <TouchableOpacity
+                    style={styles.formUploadPhotoBtn}
+                    onPress={promptAvatarSource}
+                    disabled={isUploadingAvatar}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialCommunityIcons name="camera" size={15} color="#FFFFFF" />
+                    <Text style={styles.formUploadPhotoBtnText}>
+                      {isUploadingAvatar ? 'Optimizing with ScalePixel...' : 'Upload Profile Photo'}
+                    </Text>
+                  </TouchableOpacity>
+                  <Text style={[styles.formAvatarHint, { color: activeTheme.textSecondary }]}>
+                    ScalePixel Quantum Engine auto-crops 1:1 and optimizes to JPEG (600×600).
+                  </Text>
+                </View>
+              </View>
+            </View>
+
             {/* Full Name */}
             <View style={styles.webFormRow}>
               <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Full Name:</Text>
@@ -3821,7 +4008,7 @@ function ProviderAppContent() {
                 {providerUser ? (
                   <Image
                     source={{
-                      uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                      uri: profileData?.avatar_url || providerUser?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(
                         profileData?.company_name || profileData?.full_name || providerUser?.first_name || 'SP'
                       )}&background=0084FF&color=fff&size=100&bold=true`,
                     }}
@@ -4397,35 +4584,52 @@ function ProviderAppContent() {
             >
               {/* Drawer Header with Provider Info & Close */}
               <View style={[styles.rightDrawerHeader, { borderBottomColor: activeTheme.cardBorder }]}>
-                <View style={styles.drawerHeaderProfile}>
-                  {providerUser ? (
-                    <Image
-                      source={{
-                        uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                          profileData?.company_name || profileData?.full_name || providerUser?.first_name || 'SP'
-                        )}&background=0084FF&color=fff&size=100&bold=true`,
-                      }}
-                      style={styles.drawerAvatar}
-                    />
-                  ) : (
-                    <View
-                      style={[
-                        styles.drawerAvatar,
-                        {
-                          backgroundColor: activeTheme.activeNavBg,
-                          borderColor: activeTheme.cardBorder,
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                        },
-                      ]}
-                    >
-                      <MaterialCommunityIcons name="account" size={24} color={activeTheme.activeNavText} />
-                    </View>
-                  )}
+                <TouchableOpacity
+                  style={styles.drawerHeaderProfile}
+                  onPress={promptAvatarSource}
+                  activeOpacity={0.7}
+                  accessibilityLabel="Change profile photo"
+                >
+                  <View style={{ position: 'relative' }}>
+                    {providerUser ? (
+                      <Image
+                        source={{
+                          uri: profileData?.avatar_url || providerUser?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                            profileData?.company_name || profileData?.full_name || providerUser?.first_name || 'SP'
+                          )}&background=0084FF&color=fff&size=100&bold=true`,
+                        }}
+                        style={styles.drawerAvatar}
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          styles.drawerAvatar,
+                          {
+                            backgroundColor: activeTheme.activeNavBg,
+                            borderColor: activeTheme.cardBorder,
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                          },
+                        ]}
+                      >
+                        <MaterialCommunityIcons name="account" size={24} color={activeTheme.activeNavText} />
+                      </View>
+                    )}
+                    {providerUser && (
+                      <View style={styles.drawerAvatarEditBadge}>
+                        <MaterialCommunityIcons name="camera" size={10} color="#FFFFFF" />
+                      </View>
+                    )}
+                  </View>
                   <View style={styles.drawerProfileInfo}>
                     <Text style={[styles.drawerProviderName, { color: activeTheme.textPrimary }]} numberOfLines={1}>
                       {profileData?.company_name || profileData?.full_name || providerUser?.first_name || 'ServEasy Provider'}
                     </Text>
+                    {providerUser && (
+                      <Text style={{ fontSize: 11, color: '#05c279', fontWeight: '700', marginTop: 2 }}>
+                        Tap to change photo 📷
+                      </Text>
+                    )}
                     <View style={styles.drawerBadgeRow}>
                       <View
                         style={[
@@ -4463,7 +4667,7 @@ function ProviderAppContent() {
                       </View>
                     </View>
                   </View>
-                </View>
+                </TouchableOpacity>
 
                 {/* Close Button */}
                 <TouchableOpacity
@@ -8690,6 +8894,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 8,
   },
+  webAvatarOuter: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+  },
   webAvatarWrap: {
     width: 90,
     height: 90,
@@ -8697,10 +8907,99 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 3,
     borderColor: '#05c279',
-    marginBottom: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(5, 194, 121, 0.1)',
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#05c279',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+  },
+  avatarLoadingOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 45,
+  },
+  changePhotoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    backgroundColor: 'rgba(5, 194, 121, 0.12)',
+    marginBottom: 10,
+  },
+  changePhotoBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#05c279',
+  },
+  drawerAvatarEditBadge: {
+    position: 'absolute',
+    bottom: -1,
+    right: -1,
+    backgroundColor: '#05c279',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  formAvatarUploadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(5, 194, 121, 0.25)',
+    backgroundColor: 'rgba(5, 194, 121, 0.05)',
+  },
+  formAvatarThumb: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    borderWidth: 2,
+    borderColor: '#05c279',
+  },
+  formUploadPhotoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#05c279',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  formUploadPhotoBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  formAvatarHint: {
+    fontSize: 11,
+    lineHeight: 14,
   },
   webAvatarImg: {
     width: '100%',

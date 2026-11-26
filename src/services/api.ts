@@ -112,6 +112,7 @@ export interface ProviderUser {
   email: string;
   phone: string;
   role: string;
+  avatar_url?: string | null;
   access_token?: string;
   refresh_token?: string;
 }
@@ -163,6 +164,7 @@ export interface ProviderProfileData {
   id: number;
   full_name: string;
   display_name: string;
+  avatar_url?: string | null;
   email: string;
   phone: string;
   company_name: string;
@@ -739,6 +741,7 @@ export async function saveProviderProfileApi(
     service_range_km?: number;
     latitude?: string;
     longitude?: string;
+    avatar_url?: string;
   }
 ): Promise<{ success: boolean; message: string; progress?: ProfileProgress }> {
   try {
@@ -771,6 +774,46 @@ export async function saveProviderProfileApi(
     console.log('[Provider API] Error saving provider profile:', e);
   }
   return { success: false, message: 'Network error saving profile' };
+}
+
+/**
+ * Update Provider Avatar URL in database
+ */
+export async function updateProviderAvatarApi(
+  providerId: number,
+  avatarUrl: string
+): Promise<{ success: boolean; message: string; avatar_url?: string; progress?: ProfileProgress }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/dealer-auth-api.php`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Provider-Id': String(providerId),
+      },
+      body: JSON.stringify({
+        action: 'update_avatar',
+        provider_id: providerId,
+        avatar_url: avatarUrl,
+      }),
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      if (json.status === 'success') {
+        return {
+          success: true,
+          message: json.message || 'Avatar updated successfully!',
+          avatar_url: json.avatar_url,
+          progress: json.progress,
+        };
+      }
+      return { success: false, message: json.message || 'Failed to update avatar' };
+    }
+  } catch (e) {
+    console.log('[Provider API] Error updating avatar:', e);
+  }
+  return { success: false, message: 'Network error updating avatar' };
 }
 
 /**
