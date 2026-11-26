@@ -20,6 +20,7 @@ import {
   Vibration,
   AppState,
   Alert,
+  NativeModules,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -1641,6 +1642,30 @@ function ProviderAppContent() {
   };
 
   const handlePickAndUploadAvatar = async (source: 'camera' | 'gallery') => {
+    // Check if the native ImagePicker module is actually compiled into the installed APK
+    const hasNativePicker = Boolean(
+      (NativeModules && (NativeModules.ExponentImagePicker || NativeModules.ImagePicker)) ||
+      (global as any)?.expo?.modules?.ExponentImagePicker
+    );
+
+    if (!hasNativePicker) {
+      const displayName = profileData?.company_name || profileData?.full_name || providerUser?.first_name || 'Service Provider';
+      const uploadUrl = `https://scalepixel.onrender.com/upload-avatar.php?provider_id=${activeProviderId}&name=${encodeURIComponent(displayName)}`;
+
+      Alert.alert(
+        'APK Update Required for Native Camera',
+        'Direct camera and gallery inside the app require the newly compiled ServEasy Provider APK.\n\nIn the meantime, you can upload right now via ScalePixel:',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Upload Photo Now 🚀',
+            onPress: () => Linking.openURL(uploadUrl),
+          },
+        ]
+      );
+      return;
+    }
+
     let ImagePicker: any = null;
     try {
       ImagePicker = require('expo-image-picker');
@@ -1648,24 +1673,7 @@ function ProviderAppContent() {
       ImagePicker = null;
     }
 
-    if (!ImagePicker) {
-      Alert.alert(
-        'In-App Picker Unavailable',
-        'In-app camera & gallery require the updated native app build. Would you like to use the web uploader instead?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Open Web Uploader',
-            onPress: () => {
-              const displayName = profileData?.company_name || profileData?.full_name || providerUser?.first_name || 'Service Provider';
-              const uploadUrl = `https://scalepixel.onrender.com/upload-avatar.php?provider_id=${activeProviderId}&name=${encodeURIComponent(displayName)}`;
-              Linking.openURL(uploadUrl);
-            },
-          },
-        ]
-      );
-      return;
-    }
+    if (!ImagePicker) return;
 
     try {
       let result;
