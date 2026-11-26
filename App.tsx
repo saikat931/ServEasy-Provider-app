@@ -1666,20 +1666,23 @@ function ProviderAppContent() {
           return;
         }
         result = await ImagePicker.launchCameraAsync({
-          allowsEditing: true,
-          aspect: [1, 1],
+          allowsEditing: false,
           quality: 0.8,
         });
       } else {
-        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') {
-          Alert.alert('Permission Denied', 'Photo gallery permission is required to select an image.');
-          return;
-        }
+        // Modern Android Photo Picker does not require storage permissions
+        try {
+          if (ImagePicker.getMediaLibraryPermissionsAsync) {
+            const perm = await ImagePicker.getMediaLibraryPermissionsAsync();
+            if (!perm.granted && perm.canAskAgain && ImagePicker.requestMediaLibraryPermissionsAsync) {
+              await ImagePicker.requestMediaLibraryPermissionsAsync();
+            }
+          }
+        } catch (_) {}
+
         result = await ImagePicker.launchImageLibraryAsync({
           mediaTypes: ImagePicker.MediaTypeOptions ? ImagePicker.MediaTypeOptions.Images : ['images'],
-          allowsEditing: true,
-          aspect: [1, 1],
+          allowsEditing: false,
           quality: 0.8,
         });
       }
