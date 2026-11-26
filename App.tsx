@@ -19,6 +19,7 @@ import {
   Animated,
   Vibration,
   AppState,
+  Alert,
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -163,24 +164,41 @@ function ProviderAppContent() {
     }
   }, [rightSidebarVisible]);
 
+  // OTA Update check helper callable on mount, pull-to-refresh, or manually by the user
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const checkAndApplyUpdates = useCallback(async (showFeedback = false) => {
+    try {
+      if (__DEV__) {
+        if (showFeedback) Alert.alert('Development Mode', 'OTA updates are disabled in development mode.');
+        return;
+      }
+      if (showFeedback) setIsCheckingUpdate(true);
+      const update = await Updates.checkForUpdateAsync();
+      if (update.isAvailable) {
+        if (showFeedback) {
+          Alert.alert('Update Found', 'Downloading the latest ServEasy Provider update...');
+        }
+        await Updates.fetchUpdateAsync();
+        await Updates.reloadAsync();
+      } else {
+        if (showFeedback) {
+          Alert.alert('App Up to Date', 'You are running the latest version of ServEasy Provider.');
+        }
+      }
+    } catch (e: any) {
+      console.warn('[Updates] OTA check error:', e);
+      if (showFeedback) {
+        Alert.alert('Update Check', 'Unable to check for updates at this moment: ' + (e?.message || 'Network error'));
+      }
+    } finally {
+      if (showFeedback) setIsCheckingUpdate(false);
+    }
+  }, []);
+
   // Instantly apply the latest OTA update on launch so stale bundles with gray screens are automatically purged
   useEffect(() => {
-    let isMounted = true;
-    async function syncOta() {
-      try {
-        if (__DEV__) return;
-        const update = await Updates.checkForUpdateAsync();
-        if (update.isAvailable && isMounted) {
-          await Updates.fetchUpdateAsync();
-          await Updates.reloadAsync();
-        }
-      } catch (_) {}
-    }
-    syncOta();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    checkAndApplyUpdates(false);
+  }, [checkAndApplyUpdates]);
 
   // Smoothly slide out right drawer before setting visible to false
   const closeRightDrawer = () => {
@@ -871,6 +889,7 @@ function ProviderAppContent() {
         }
       } else if (nextAppState === 'active') {
         NotificationService.clearPendingBookingsNotification();
+        checkAndApplyUpdates(false);
       }
     });
 
@@ -2450,7 +2469,15 @@ function ProviderAppContent() {
         {/* 2. Provider Identity Card (Matches Web Left Card in profile.php) */}
         <GlassCard theme={theme} style={styles.webProfileCard} intensity={activeTheme.glassIntensity}>
           <View style={styles.webAvatarContainer}>
-            <View style={styles.webAvatarOuter}>
+            {/* Clickable Profile Avatar with Pencil Icon Badge */}
+            <TouchableOpacity
+              style={styles.webAvatarOuter}
+              onPress={promptAvatarSource}
+              disabled={isUploadingAvatar}
+              activeOpacity={0.8}
+              accessibilityRole="button"
+              accessibilityLabel="Click to upload profile photo"
+            >
               <View style={styles.webAvatarWrap}>
                 <Image
                   source={{
@@ -2464,15 +2491,11 @@ function ProviderAppContent() {
                   </View>
                 )}
               </View>
-              <TouchableOpacity
-                style={styles.avatarEditBadge}
-                onPress={promptAvatarSource}
-                disabled={isUploadingAvatar}
-                activeOpacity={0.8}
-              >
-                <MaterialCommunityIcons name="camera" size={15} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
+              {/* Pencil Icon Edit Badge */}
+              <View style={styles.avatarEditBadge}>
+                <MaterialCommunityIcons name="pencil" size={16} color="#FFFFFF" />
+              </View>
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.changePhotoBtn}
@@ -2480,9 +2503,9 @@ function ProviderAppContent() {
               disabled={isUploadingAvatar}
               activeOpacity={0.7}
             >
-              <MaterialCommunityIcons name="image-edit-outline" size={14} color="#05c279" />
+              <MaterialCommunityIcons name="pencil" size={14} color="#05c279" />
               <Text style={styles.changePhotoBtnText}>
-                {isUploadingAvatar ? 'Optimizing with ScalePixel...' : 'Change Profile Photo'}
+                {isUploadingAvatar ? 'Optimizing with ScalePixel...' : 'Edit Profile Photo'}
               </Text>
             </TouchableOpacity>
 
@@ -2542,6 +2565,34 @@ function ProviderAppContent() {
                 <Text style={[styles.webStatLabel, { color: activeTheme.textSecondary }]}>SINCE</Text>
               </View>
             </View>
+
+            {/* Check for App Updates Manual Sync */}
+            <TouchableOpacity
+              onPress={() => checkAndApplyUpdates(true)}
+              disabled={isCheckingUpdate}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginTop: 16,
+                paddingVertical: 8,
+                paddingHorizontal: 16,
+                borderRadius: 20,
+                backgroundColor: activeTheme.tableHeaderBg,
+                borderWidth: 1,
+                borderColor: activeTheme.cardBorder,
+              }}
+              activeOpacity={0.7}
+            >
+              {isCheckingUpdate ? (
+                <ActivityIndicator size="small" color="#05c279" style={{ marginRight: 6 }} />
+              ) : (
+                <MaterialCommunityIcons name="sync" size={14} color="#05c279" style={{ marginRight: 6 }} />
+              )}
+              <Text style={{ fontSize: 12, fontWeight: '600', color: activeTheme.textSecondary }}>
+                {isCheckingUpdate ? 'Checking for updates...' : 'Check for App Updates (v1.0.1)'}
+              </Text>
+            </TouchableOpacity>
           </View>
         </GlassCard>
 
@@ -4505,7 +4556,7 @@ function ProviderAppContent() {
                     )}
                     {providerUser && (
                       <View style={styles.drawerAvatarEditBadge}>
-                        <MaterialCommunityIcons name="camera" size={10} color="#FFFFFF" />
+                        <MaterialCommunityIcons name="pencil" size={10} color="#FFFFFF" />
                       </View>
                     )}
                   </View>
@@ -4515,7 +4566,7 @@ function ProviderAppContent() {
                     </Text>
                     {providerUser && (
                       <Text style={{ fontSize: 11, color: '#05c279', fontWeight: '700', marginTop: 2 }}>
-                        Tap to change photo 📷
+                        Tap to edit photo ✏️
                       </Text>
                     )}
                     <View style={styles.drawerBadgeRow}>
