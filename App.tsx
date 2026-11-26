@@ -60,6 +60,7 @@ import {
   registerCompanyApi,
   addBranchApi,
   getStoredProviderUser,
+  storeProviderUser,
   clearStoredProviderUser,
   LiveProviderEvent,
   markBookingPaidApi,
@@ -1611,20 +1612,125 @@ function ProviderAppContent() {
     }
   };
 
-  // ─── Provider Avatar Upload via ScalePixel ──────────────────────────────────
+  // ─── Provider Avatar Upload via ScalePixel (In-App Flow) ──────────────────────
   const promptAvatarSource = () => {
     if (!activeProviderId) {
-      showCustomAlert('Sign In Required', 'Please sign in to update your profile photo.');
+      Alert.alert('Sign In Required', 'Please sign in to update your profile photo.');
       return;
     }
 
-    const displayName = profileData?.company_name || profileData?.full_name || providerUser?.first_name || 'Service Provider';
-    const uploadUrl = `https://scalepixel.onrender.com/upload-avatar.php?provider_id=${activeProviderId}&name=${encodeURIComponent(displayName)}`;
+    Alert.alert(
+      'Profile Photo',
+      'Choose an option to update your profile picture:',
+      [
+        {
+          text: '📷 Take Photo',
+          onPress: () => handlePickAndUploadAvatar('camera'),
+        },
+        {
+          text: '🖼️ Choose from Gallery',
+          onPress: () => handlePickAndUploadAvatar('gallery'),
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
-    Linking.openURL(uploadUrl).catch((err) => {
-      console.log('[Avatar] Error opening ScalePixel uploader:', err);
-      showCustomAlert('Error', 'Unable to open browser for photo upload.');
-    });
+  const handlePickAndUploadAvatar = async (source: 'camera' | 'gallery') => {
+    let ImagePicker: any = null;
+    try {
+      ImagePicker = require('expo-image-picker');
+    } catch (_) {
+      ImagePicker = null;
+    }
+
+    if (!ImagePicker) {
+      Alert.alert(
+        'In-App Picker Unavailable',
+        'In-app camera & gallery require the updated native app build. Would you like to use the web uploader instead?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Open Web Uploader',
+            onPress: () => {
+              const displayName = profileData?.company_name || profileData?.full_name || providerUser?.first_name || 'Service Provider';
+              const uploadUrl = `https://scalepixel.onrender.com/upload-avatar.php?provider_id=${activeProviderId}&name=${encodeURIComponent(displayName)}`;
+              Linking.openURL(uploadUrl);
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    try {
+      let result;
+      if (source === 'camera') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Denied', 'Camera permission is required to capture your photo.');
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync({
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Denied', 'Photo gallery permission is required to select an image.');
+          return;
+        }
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions ? ImagePicker.MediaTypeOptions.Images : ['images'],
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+      }
+
+      if (result.canceled || !result.assets || !result.assets[0]?.uri) {
+        return;
+      }
+
+      const selectedUri = result.assets[0].uri;
+      setIsUploadingAvatar(true);
+
+      // In-app background processing: send directly to ScalePixel Quantum Engine
+      const uploadResult = await uploadProviderAvatarToScalePixel(selectedUri, activeProviderId);
+
+      if (uploadResult.success && uploadResult.downloadUrl) {
+        const newAvatarUrl = uploadResult.downloadUrl;
+
+        // Persist avatar in ServEasy backend database
+        await updateProviderAvatarApi(activeProviderId, newAvatarUrl);
+
+        // Update local React state instantly
+        setProfileData((prev) => (prev ? { ...prev, avatar_url: newAvatarUrl } : prev));
+        setProviderUser((prev) => (prev ? { ...prev, avatar_url: newAvatarUrl } : prev));
+
+        // Update AsyncStorage
+        const cached = await getStoredProviderUser();
+        if (cached) {
+          cached.avatar_url = newAvatarUrl;
+          await storeProviderUser(cached);
+        }
+
+        Alert.alert('Photo Updated! 🌟', `Optimized with ScalePixel (${uploadResult.savedPercent}% smaller, 600×600)`);
+      } else {
+        Alert.alert('Upload Failed', uploadResult.message || 'ScalePixel could not process the photo.');
+      }
+    } catch (err: any) {
+      console.error('[Avatar] In-app upload error:', err);
+      Alert.alert('Upload Error', err?.message || 'Failed to capture or upload photo.');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   };
 
   const handleAddService = async () => {
