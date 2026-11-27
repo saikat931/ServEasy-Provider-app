@@ -55,7 +55,7 @@ jobs:
       - name: Prepare APKs for Easy Identification
         run: |
           cp android/app/build/outputs/apk/release/app-release.apk ServEasy-Provider.apk
-          cp android/app/build/outputs/apk/release/app-release.apk ServEasy-Provider-v1.0.9.apk
+          cp android/app/build/outputs/apk/release/app-release.apk "ServEasy-Provider-${{ github.ref_name }}.apk"
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
@@ -63,16 +63,16 @@ jobs:
           name: ServEasy-Provider-App-APK
           path: |
             ServEasy-Provider.apk
-            ServEasy-Provider-v1.0.9.apk
+            ServEasy-Provider-*.apk
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          name: ServEasy Provider App v1.0.9
+          name: ServEasy Provider App ${{ github.ref_name }}
           files: |
             ServEasy-Provider.apk
-            ServEasy-Provider-v1.0.9.apk
+            ServEasy-Provider-*.apk
           draft: false
           prerelease: false
           generate_release_notes: true

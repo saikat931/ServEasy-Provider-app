@@ -2,7 +2,7 @@
   "expo": {
     "name": "ServEasy Provider",
     "slug": "provider-app",
-    "version": "1.0.9",
+    "version": "1.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.serveasy.provider",
-      "versionCode": 5,
+      "versionCode": 6,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -84,7 +84,7 @@
         "expo-channel-name": "preview"
       }
     },
-    "runtimeVersion": "1.0.9",
+    "runtimeVersion": "1.1.0",
     "extra": {
       "eas": {
         "projectId": "fc1a7de7-01d6-47ae-8bd8-66afc8dfade4"

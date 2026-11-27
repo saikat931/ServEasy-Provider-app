@@ -505,38 +505,28 @@ function ProviderAppContent() {
   };
 
   const handleDutyTogglePress = () => {
-    const targetId = Number(activeProviderId || profileData?.id || providerUser?.id || 0);
-    const nextDuty = !isOnDuty;
+    // When currently Online, prompt with "Are you sure?" confirmation sheet before turning Offline
+    if (isOnDuty) {
+      openOffDutySheet();
+      return;
+    }
 
-    // Direct toggle on tap
-    setIsOnDuty(nextDuty);
-    isOnDutyRef.current = nextDuty;
+    // When currently Offline, tap immediately turns Online
+    const targetId = Number(activeProviderId || profileData?.id || providerUser?.id || 0);
+    setIsOnDuty(true);
+    isOnDutyRef.current = true;
 
     if (targetId > 0) {
-      AsyncStorage.setItem(`serveasy_provider_duty_${targetId}`, nextDuty ? '1' : '0').catch(() => {});
-      toggleProviderDutyApi(targetId, nextDuty).catch(() => {});
+      AsyncStorage.setItem(`serveasy_provider_duty_${targetId}`, '1').catch(() => {});
+      toggleProviderDutyApi(targetId, true).catch(() => {});
     }
 
-    if (!nextDuty) {
-      try {
-        Vibration.cancel();
-        RingtoneService.stopRinging();
-      } catch (_) {}
-      activeRingingBookingIdRef.current = null;
-      setLiveToast({
-        id: Date.now(),
-        title: '⏸️ You are Offline',
-        message: 'Incoming booking ringtones and instant job alerts are paused.',
-        type: 'warning',
-      });
-    } else {
-      setLiveToast({
-        id: Date.now(),
-        title: '🟢 You are Online',
-        message: 'Live booking alerts and incoming ringtones are now active.',
-        type: 'success',
-      });
-    }
+    setLiveToast({
+      id: Date.now(),
+      title: '🟢 You are Online',
+      message: 'Live booking alerts and incoming ringtones are now active.',
+      type: 'success',
+    });
   };
 
   const confirmGoOffDuty = () => {
