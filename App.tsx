@@ -74,7 +74,7 @@ import {
   submitProviderKycApi,
   submitProviderLiveSelfieApi,
 } from './src/services/api';
-import { uploadProviderAvatarToScalePixel, uploadProviderDocToScalePixel } from './src/services/scalePixelService';
+import { uploadProviderAvatarToScalePixel, uploadProviderDocToScalePixel, uploadProviderGalleryPhotoToScalePixel } from './src/services/scalePixelService';
 import { reverseGeocodeCoords, acquireDeviceLocation, getGoogleMapTileUrl, DoorstepAddressResult } from './src/services/locationHelper';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
