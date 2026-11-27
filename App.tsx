@@ -516,7 +516,7 @@ function ProviderAppContent() {
       }
       setLiveToast({
         id: Date.now(),
-        title: '🟢 You are Online (On Duty)',
+        title: '🟢 You are Online',
         message: 'Live booking alerts and incoming ringtones are now active.',
         type: 'success',
       });
@@ -538,7 +538,7 @@ function ProviderAppContent() {
       activeRingingBookingIdRef.current = null;
       setLiveToast({
         id: Date.now(),
-        title: '⏸️ You are Off Duty (Offline)',
+        title: '⏸️ You are Offline',
         message: 'Incoming booking ringtones and instant job alerts are paused.',
         type: 'warning',
       });
@@ -3000,7 +3000,7 @@ function ProviderAppContent() {
               <View style={styles.webStatCol}>
                 <View style={[styles.webStatusBadge, { backgroundColor: accountActive ? 'rgba(48,209,88,0.18)' : 'rgba(255,69,58,0.18)' }]}>
                   <Text style={[styles.webStatusBadgeText, { color: accountActive ? '#30D158' : '#FF453A' }]}>
-                    {accountActive ? 'ON DUTY' : 'OFF DUTY'}
+                    {accountActive ? 'ONLINE' : 'OFFLINE'}
                   </Text>
                 </View>
                 <Text style={[styles.webStatLabel, { color: activeTheme.textSecondary }]}>STATUS</Text>
@@ -3403,7 +3403,7 @@ function ProviderAppContent() {
                 <Text style={[styles.webStatusItemLabel, { color: activeTheme.textPrimary }]}>Account Status:</Text>
                 <View style={[styles.webBadgeGreenPill, { backgroundColor: accountActive ? 'rgba(5, 194, 121, 0.15)' : 'rgba(255, 69, 58, 0.15)' }]}>
                   <Text style={[styles.webBadgeGreenPillText, { color: accountActive ? '#05c279' : '#FF453A' }]}>
-                    {accountActive ? 'ON DUTY (ACTIVE)' : 'OFF DUTY (OFFLINE)'}
+                    {accountActive ? 'Online' : 'Offline'}
                   </Text>
                 </View>
               </View>
@@ -4633,7 +4633,7 @@ function ProviderAppContent() {
                     activeOpacity={0.8}
                     accessibilityRole="switch"
                     accessibilityState={{ checked: isOnDuty }}
-                    accessibilityLabel={isOnDuty ? 'Provider Online, tap to go Off Duty' : 'Provider Offline, tap to go On Duty'}
+                    accessibilityLabel={isOnDuty ? 'Online, tap to go Offline' : 'Offline, tap to go Online'}
                     style={[
                       styles.dutyTogglePill,
                       {
@@ -4658,7 +4658,7 @@ function ProviderAppContent() {
                         { color: isOnDuty ? '#30D158' : '#FF453A' },
                       ]}
                     >
-                      {isOnDuty ? 'ON DUTY • ONLINE' : 'OFF DUTY • OFFLINE'}
+                      {isOnDuty ? 'Online' : 'Offline'}
                     </Text>
                     <View
                       style={[
@@ -7239,11 +7239,11 @@ function ProviderAppContent() {
               </View>
 
               <Text style={[styles.offDutySheetTitle, { color: activeTheme.textPrimary }]}>
-                Go Off Duty?
+                Go Offline?
               </Text>
 
               <Text style={[styles.offDutySheetBody, { color: activeTheme.textSecondary }]}>
-                Are you sure you want to go offline? You won’t receive live booking ringtones or instant job alerts while Off Duty.
+                Are you sure you want to go offline? You won’t receive live booking ringtones or instant job alerts while offline.
               </Text>
 
               {activeInProgressJob && (
@@ -7286,7 +7286,7 @@ function ProviderAppContent() {
                   style={styles.offDutyConfirmBtn}
                 >
                   <MaterialCommunityIcons name="power" size={17} color="#FFFFFF" />
-                  <Text style={styles.offDutyConfirmBtnText}>Yes, Go Off Duty</Text>
+                  <Text style={styles.offDutyConfirmBtnText}>Yes, Go Offline</Text>
                 </TouchableOpacity>
               </View>
             </Animated.View>
