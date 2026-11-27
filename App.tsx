@@ -447,7 +447,7 @@ function ProviderAppContent() {
   ]);
 
   // Active Provider ID in use (null if not logged in)
-  const activeProviderId = providerUser?.id || null;
+  const activeProviderId = (providerUser?.id ? Number(providerUser.id) : null) || (profileData?.id ? Number(profileData.id) : null) || null;
 
   // Load persisted On/Off Duty status whenever provider logs in
   useEffect(() => {
@@ -505,32 +505,19 @@ function ProviderAppContent() {
   };
 
   const handleDutyTogglePress = () => {
-    if (isOnDuty) {
-      openOffDutySheet();
-    } else {
-      setIsOnDuty(true);
-      isOnDutyRef.current = true;
-      if (activeProviderId) {
-        AsyncStorage.setItem(`serveasy_provider_duty_${activeProviderId}`, '1').catch(() => {});
-        toggleProviderDutyApi(activeProviderId, true).catch(() => {});
-      }
-      setLiveToast({
-        id: Date.now(),
-        title: '🟢 You are Online',
-        message: 'Live booking alerts and incoming ringtones are now active.',
-        type: 'success',
-      });
-    }
-  };
+    const targetId = Number(activeProviderId || profileData?.id || providerUser?.id || 0);
+    const nextDuty = !isOnDuty;
 
-  const confirmGoOffDuty = () => {
-    closeOffDutySheet(() => {
-      setIsOnDuty(false);
-      isOnDutyRef.current = false;
-      if (activeProviderId) {
-        AsyncStorage.setItem(`serveasy_provider_duty_${activeProviderId}`, '0').catch(() => {});
-        toggleProviderDutyApi(activeProviderId, false).catch(() => {});
-      }
+    // Direct toggle on tap
+    setIsOnDuty(nextDuty);
+    isOnDutyRef.current = nextDuty;
+
+    if (targetId > 0) {
+      AsyncStorage.setItem(`serveasy_provider_duty_${targetId}`, nextDuty ? '1' : '0').catch(() => {});
+      toggleProviderDutyApi(targetId, nextDuty).catch(() => {});
+    }
+
+    if (!nextDuty) {
       try {
         Vibration.cancel();
         RingtoneService.stopRinging();
@@ -542,7 +529,36 @@ function ProviderAppContent() {
         message: 'Incoming booking ringtones and instant job alerts are paused.',
         type: 'warning',
       });
+    } else {
+      setLiveToast({
+        id: Date.now(),
+        title: '🟢 You are Online',
+        message: 'Live booking alerts and incoming ringtones are now active.',
+        type: 'success',
+      });
+    }
+  };
+
+  const confirmGoOffDuty = () => {
+    const targetId = Number(activeProviderId || profileData?.id || providerUser?.id || 0);
+    setIsOnDuty(false);
+    isOnDutyRef.current = false;
+    if (targetId > 0) {
+      AsyncStorage.setItem(`serveasy_provider_duty_${targetId}`, '0').catch(() => {});
+      toggleProviderDutyApi(targetId, false).catch(() => {});
+    }
+    try {
+      Vibration.cancel();
+      RingtoneService.stopRinging();
+    } catch (_) {}
+    activeRingingBookingIdRef.current = null;
+    setLiveToast({
+      id: Date.now(),
+      title: '⏸️ You are Offline',
+      message: 'Incoming booking ringtones and instant job alerts are paused.',
+      type: 'warning',
     });
+    closeOffDutySheet();
   };
 
   // Reference to track last SSE event ID to avoid duplicate alerts

@@ -739,7 +739,9 @@ export async function toggleProviderDutyApi(
   isOnDuty: boolean
 ): Promise<{ success: boolean; is_active?: number; is_on_duty?: boolean; message?: string }> {
   try {
-    const res = await fetch(`${API_BASE_URL}/dealer-auth-api.php`, {
+    const activeVal = isOnDuty ? 1 : 0;
+    const url = `${API_BASE_URL}/dealer-auth-api.php?action=set_duty_status&provider_id=${providerId}&is_active=${activeVal}&is_on_duty=${isOnDuty}`;
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -749,7 +751,7 @@ export async function toggleProviderDutyApi(
       body: JSON.stringify({
         action: 'set_duty_status',
         provider_id: providerId,
-        is_active: isOnDuty ? 1 : 0,
+        is_active: activeVal,
         is_on_duty: isOnDuty,
       }),
     });
