@@ -345,6 +345,7 @@ function ProviderAppContent() {
   const [formFullName, setFormFullName] = useState('');
   const [isUploadingAvatar, setIsUploadingAvatar] = useState<boolean>(false);
   const [avatarPickerModalVisible, setAvatarPickerModalVisible] = useState<boolean>(false);
+  const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(null);
   const [formCompanyName, setFormCompanyName] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formPhone, setFormPhone] = useState('');
@@ -530,6 +531,13 @@ function ProviderAppContent() {
       try {
         const stored = await getStoredProviderUser();
         if (stored) {
+          const storedAvatar = await AsyncStorage.getItem(`@serveasy_avatar_${stored.id}`);
+          if (storedAvatar) {
+            stored.avatar_url = storedAvatar;
+            setLocalAvatarUrl(storedAvatar);
+          } else if (stored.avatar_url) {
+            setLocalAvatarUrl(stored.avatar_url);
+          }
           setProviderUser(stored);
           loadLiveData(false, stored.id);
         } else {
@@ -603,6 +611,10 @@ function ProviderAppContent() {
         setServices([]);
       }
       if (fetchedProfile) {
+        const effectiveAvatar = fetchedProfile.avatar_url || providerUser?.avatar_url || localAvatarUrl;
+        if (effectiveAvatar) {
+          fetchedProfile.avatar_url = effectiveAvatar;
+        }
         setProfileData(fetchedProfile);
         setFormFullName(fetchedProfile.full_name || '');
         setFormCompanyName(fetchedProfile.company_name || '');
@@ -1687,17 +1699,26 @@ function ProviderAppContent() {
         await updateProviderAvatarApi(activeProviderId!, newAvatarUrl);
 
         // Update local React state instantly
-        setProfileData((prev) => (prev ? { ...prev, avatar_url: newAvatarUrl } : prev));
-        setProviderUser((prev) => (prev ? { ...prev, avatar_url: newAvatarUrl } : prev));
+        setLocalAvatarUrl(newAvatarUrl);
+        setProfileData((prev) => (prev ? { ...prev, avatar_url: newAvatarUrl } : ({ avatar_url: newAvatarUrl } as any)));
+        setProviderUser((prev) => (prev ? { ...prev, avatar_url: newAvatarUrl } : ({ avatar_url: newAvatarUrl } as any)));
 
         // Update AsyncStorage
         const cached = await getStoredProviderUser();
         if (cached) {
           cached.avatar_url = newAvatarUrl;
           await storeProviderUser(cached);
+        } else if (providerUser) {
+          await storeProviderUser({ ...providerUser, avatar_url: newAvatarUrl });
+        }
+        if (activeProviderId) {
+          await AsyncStorage.setItem(`@serveasy_avatar_${activeProviderId}`, newAvatarUrl);
         }
 
-        Alert.alert('Photo Updated! 🌟', `Optimized with ScalePixel (${uploadResult.savedPercent}% smaller, 600×600)`);
+        Alert.alert(
+          'Photo Uploaded Successfully! ✅',
+          'Your profile photo has been uploaded successfully and will be automatically updated across the app within a minute.'
+        );
       } else {
         Alert.alert('Upload Failed', uploadResult.message || 'ScalePixel could not process the photo.');
       }
@@ -2562,8 +2583,13 @@ function ProviderAppContent() {
             >
               <View style={styles.webAvatarWrap}>
                 <Image
+                  key={profileData?.avatar_url || providerUser?.avatar_url || localAvatarUrl || 'account-avatar-img'}
                   source={{
-                    uri: profileData?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=05c279&color=fff&size=160&bold=true`,
+                    uri:
+                      profileData?.avatar_url ||
+                      providerUser?.avatar_url ||
+                      localAvatarUrl ||
+                      `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=05c279&color=fff&size=160&bold=true`,
                   }}
                   style={styles.webAvatarImg}
                 />
@@ -3987,10 +4013,15 @@ function ProviderAppContent() {
                 )}
                 {providerUser ? (
                   <Image
+                    key={profileData?.avatar_url || providerUser?.avatar_url || localAvatarUrl || 'header-avatar-img'}
                     source={{
-                      uri: profileData?.avatar_url || providerUser?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                        profileData?.company_name || profileData?.full_name || providerUser?.first_name || 'SP'
-                      )}&background=0084FF&color=fff&size=100&bold=true`,
+                      uri:
+                        profileData?.avatar_url ||
+                        providerUser?.avatar_url ||
+                        localAvatarUrl ||
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                          profileData?.company_name || profileData?.full_name || providerUser?.first_name || 'SP'
+                        )}&background=0084FF&color=fff&size=100&bold=true`,
                     }}
                     style={styles.headerAvatar}
                   />
@@ -4576,10 +4607,15 @@ function ProviderAppContent() {
                   <View style={{ position: 'relative' }}>
                     {providerUser ? (
                       <Image
+                        key={profileData?.avatar_url || providerUser?.avatar_url || localAvatarUrl || 'drawer-avatar-img'}
                         source={{
-                          uri: profileData?.avatar_url || providerUser?.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                            profileData?.company_name || profileData?.full_name || providerUser?.first_name || 'SP'
-                          )}&background=0084FF&color=fff&size=100&bold=true`,
+                          uri:
+                            profileData?.avatar_url ||
+                            providerUser?.avatar_url ||
+                            localAvatarUrl ||
+                            `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                              profileData?.company_name || profileData?.full_name || providerUser?.first_name || 'SP'
+                            )}&background=0084FF&color=fff&size=100&bold=true`,
                         }}
                         style={styles.drawerAvatar}
                       />

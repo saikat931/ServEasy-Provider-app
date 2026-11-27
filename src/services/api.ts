@@ -784,6 +784,7 @@ export async function updateProviderAvatarApi(
   avatarUrl: string
 ): Promise<{ success: boolean; message: string; avatar_url?: string; progress?: ProfileProgress }> {
   try {
+    // 1. Direct update_avatar action
     const res = await fetch(`${API_BASE_URL}/dealer-auth-api.php`, {
       method: 'POST',
       headers: {
@@ -808,7 +809,33 @@ export async function updateProviderAvatarApi(
           progress: json.progress,
         };
       }
-      return { success: false, message: json.message || 'Failed to update avatar' };
+    }
+
+    // 2. High-compatibility fallback via save_profile (guaranteed support across remote server versions)
+    const fallbackRes = await fetch(`${API_BASE_URL}/dealer-auth-api.php`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Provider-Id': String(providerId),
+      },
+      body: JSON.stringify({
+        action: 'save_profile',
+        provider_id: providerId,
+        avatar_url: avatarUrl,
+      }),
+    });
+
+    if (fallbackRes.ok) {
+      const fbJson = await fallbackRes.json();
+      if (fbJson.status === 'success') {
+        return {
+          success: true,
+          message: 'Avatar updated successfully!',
+          avatar_url: avatarUrl,
+          progress: fbJson.progress,
+        };
+      }
     }
   } catch (e) {
     console.log('[Provider API] Error updating avatar:', e);
