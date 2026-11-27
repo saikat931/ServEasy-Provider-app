@@ -125,6 +125,7 @@ export interface ProfilePillar {
   badge: string;
   badge_class: string;
   status?: string;
+  url?: string;
 }
 
 export interface ProfileProgress {
@@ -135,6 +136,7 @@ export interface ProfileProgress {
     email: ProfilePillar;
     address: ProfilePillar;
     id_proof: ProfilePillar;
+    selfie?: ProfilePillar;
   };
   missing: string[];
   id_status: string;
@@ -167,9 +169,11 @@ export interface ProviderProfileData {
   avatar_url?: string | null;
   email: string;
   phone: string;
+  alt_phone_number?: string | null;
   company_name: string;
   has_company: boolean;
   location_address: string;
+  other_address?: string | null;
   landmark: string;
   pincode: string;
   latitude?: string;
@@ -742,6 +746,8 @@ export async function saveProviderProfileApi(
     latitude?: string;
     longitude?: string;
     avatar_url?: string;
+    alt_phone_number?: string;
+    other_address?: string;
   }
 ): Promise<{ success: boolean; message: string; progress?: ProfileProgress }> {
   try {
@@ -841,6 +847,90 @@ export async function updateProviderAvatarApi(
     console.log('[Provider API] Error updating avatar:', e);
   }
   return { success: false, message: 'Network error updating avatar' };
+}
+
+/**
+ * Submit Government ID Proof Document (Aadhaar, PAN, Voter ID, etc.)
+ */
+export async function submitProviderKycApi(
+  providerId: number,
+  data: {
+    id_type: string;
+    id_number: string;
+    id_front_image: string;
+    id_back_image?: string;
+  }
+): Promise<{ success: boolean; message: string; progress?: ProfileProgress }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/dealer-auth-api.php`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Provider-Id': String(providerId),
+      },
+      body: JSON.stringify({
+        action: 'submit_kyc_document',
+        provider_id: providerId,
+        ...data,
+      }),
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      if (json.status === 'success') {
+        return {
+          success: true,
+          message: json.message || 'ID Proof submitted successfully!',
+          progress: json.progress,
+        };
+      }
+      return { success: false, message: json.message || 'Failed to submit ID Proof' };
+    }
+  } catch (e) {
+    console.log('[Provider API] Error submitting KYC ID proof:', e);
+  }
+  return { success: false, message: 'Network error submitting ID Proof' };
+}
+
+/**
+ * Submit Real Native Camera Live Verification Selfie
+ */
+export async function submitProviderLiveSelfieApi(
+  providerId: number,
+  selfieUrl: string
+): Promise<{ success: boolean; message: string; selfie_url?: string; progress?: ProfileProgress }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/dealer-auth-api.php`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Provider-Id': String(providerId),
+      },
+      body: JSON.stringify({
+        action: 'submit_live_selfie',
+        provider_id: providerId,
+        selfie_url: selfieUrl,
+      }),
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      if (json.status === 'success') {
+        return {
+          success: true,
+          message: json.message || 'Live Selfie verified and submitted!',
+          selfie_url: json.selfie_url,
+          progress: json.progress,
+        };
+      }
+      return { success: false, message: json.message || 'Failed to submit Live Selfie' };
+    }
+  } catch (e) {
+    console.log('[Provider API] Error submitting Live Selfie:', e);
+  }
+  return { success: false, message: 'Network error submitting Live Selfie' };
 }
 
 /**

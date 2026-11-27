@@ -71,8 +71,10 @@ import {
   updateProviderLiveLocationApi,
   fetchProviderLiveLocationApi,
   updateProviderAvatarApi,
+  submitProviderKycApi,
+  submitProviderLiveSelfieApi,
 } from './src/services/api';
-import { uploadProviderAvatarToScalePixel } from './src/services/scalePixelService';
+import { uploadProviderAvatarToScalePixel, uploadProviderDocToScalePixel } from './src/services/scalePixelService';
 import { reverseGeocodeCoords, acquireDeviceLocation, getGoogleMapTileUrl, DoorstepAddressResult } from './src/services/locationHelper';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -355,6 +357,25 @@ function ProviderAppContent() {
   const [formRangeKm, setFormRangeKm] = useState('10');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
 
+  // Additional Profile Fields (alt phone and secondary address)
+  const [formAltPhone, setFormAltPhone] = useState('');
+  const [formOtherAddress, setFormOtherAddress] = useState('');
+
+  // 5 KYC Verification Pillars & Modals States
+  const [phoneModalVisible, setPhoneModalVisible] = useState(false);
+  const [emailModalVisible, setEmailModalVisible] = useState(false);
+  const [addressModalVisible, setAddressModalVisible] = useState(false);
+  const [kycModalVisible, setKycModalVisible] = useState(false);
+  const [kycIdType, setKycIdType] = useState<'aadhaar' | 'pan' | 'voter_id' | 'driving_license' | 'passport'>('aadhaar');
+  const [kycIdNumber, setKycIdNumber] = useState('');
+  const [kycFrontImage, setKycFrontImage] = useState<string | null>(null);
+  const [kycBackImage, setKycBackImage] = useState<string | null>(null);
+  const [isUploadingKycFront, setIsUploadingKycFront] = useState(false);
+  const [isUploadingKycBack, setIsUploadingKycBack] = useState(false);
+  const [isSubmittingKyc, setIsSubmittingKyc] = useState(false);
+  const [isCapturingSelfie, setIsCapturingSelfie] = useState(false);
+  const [selfieModalVisible, setSelfieModalVisible] = useState(false);
+
   // Map Pinning & Location States (Toggleable inline map)
   const [showProfileMap, setShowProfileMap] = useState(false);
   const [mapLatitude, setMapLatitude] = useState(22.6231);
@@ -620,7 +641,9 @@ function ProviderAppContent() {
         setFormCompanyName(fetchedProfile.company_name || '');
         setFormEmail(fetchedProfile.email || '');
         setFormPhone(fetchedProfile.phone || '');
+        setFormAltPhone(fetchedProfile.alt_phone_number || '');
         setFormAddress(fetchedProfile.location_address || '');
+        setFormOtherAddress(fetchedProfile.other_address || '');
         setFormLandmark(fetchedProfile.landmark || '');
         setFormPincode(fetchedProfile.pincode || '');
         setFormRangeKm(String(fetchedProfile.service_range_km || 10));
@@ -1421,7 +1444,9 @@ function ProviderAppContent() {
         company_name: formCompanyName,
         email: formEmail,
         phone: formPhone,
+        alt_phone_number: formAltPhone,
         location_address: formAddress,
+        other_address: formOtherAddress,
         landmark: formLandmark,
         pincode: formPincode,
         service_range_km: parseFloat(formRangeKm) || 10,
@@ -1626,16 +1651,43 @@ function ProviderAppContent() {
     }
   };
 
-  // ─── Provider Avatar Upload via ScalePixel (In-App Flow) ──────────────────────
+  // ─── Provider KYC Verification Status Helper ─────────────────────────────────
+  const isProviderIdApproved = (): boolean => {
+    const progress = profileData?.progress;
+    const idStatus = (progress?.id_status || profileData?.verified_status || '').toLowerCase();
+    return idStatus === 'approved' || idStatus === 'verified';
+  };
+
+  // ─── Provider Avatar Upload via ScalePixel (In-App Flow with Security Gate) ───
   const promptAvatarSource = () => {
     if (!activeProviderId) {
       Alert.alert('Sign In Required', 'Please sign in to update your profile photo.');
       return;
     }
+
+    // SECURITY GATE: Prevent unauthorized/unverified profile picture changes before ID approval
+    if (!isProviderIdApproved()) {
+      Alert.alert(
+        'ID Approval Required 🛡️',
+        'To prevent impersonation and maintain trust on ServEasy, custom gallery photo uploads are unlocked only after your Government ID & Live Verification Selfie are approved.\n\nYou can take your live verification selfie right now using your device front camera!',
+        [
+          { text: 'Take Live Selfie 📸', onPress: () => handleCaptureLiveSelfie() },
+          { text: 'Submit Govt ID 🪪', onPress: () => setKycModalVisible(true) },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+
     setAvatarPickerModalVisible(true);
   };
 
   const handlePickAndUploadAvatar = async (source: 'camera' | 'gallery') => {
+    if (source === 'gallery' && !isProviderIdApproved()) {
+      Alert.alert('Access Restricted 🛡️', 'Gallery uploads are locked until your Government ID and Live Selfie are approved.');
+      return;
+    }
+
     let ImagePicker: any = null;
     try {
       ImagePicker = require('expo-image-picker');
@@ -1727,6 +1779,211 @@ function ProviderAppContent() {
       Alert.alert('Upload Error', err?.message || 'Failed to capture or upload photo.');
     } finally {
       setIsUploadingAvatar(false);
+    }
+  };
+
+  // ─── Real Native Camera Live Verification Selfie (5th Pillar) ─────────────
+  const handleCaptureLiveSelfie = async () => {
+    if (!activeProviderId) {
+      Alert.alert('Sign In Required', 'Please sign in to complete live selfie verification.');
+      return;
+    }
+
+    let ImagePicker: any = null;
+    try {
+      ImagePicker = require('expo-image-picker');
+    } catch (_) {
+      ImagePicker = null;
+    }
+
+    if (!ImagePicker || !ImagePicker.launchCameraAsync) {
+      Alert.alert(
+        'Camera Required',
+        'Live verification selfie requires camera access on the ServEasy Provider app.\n\nPlease ensure camera hardware is enabled.',
+        [{ text: 'OK', style: 'cancel' }]
+      );
+      return;
+    }
+
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'Camera permission is required to capture your live verification selfie.');
+        return;
+      }
+
+      setIsCapturingSelfie(true);
+      // Strictly real front camera with native face framing
+      const cameraTypeVal = ImagePicker.CameraType?.front ?? 'front';
+      const result = await ImagePicker.launchCameraAsync({
+        cameraType: cameraTypeVal,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.85,
+      });
+
+      if (result.canceled || !result.assets || !result.assets[0]?.uri) {
+        setIsCapturingSelfie(false);
+        return;
+      }
+
+      const selfieUri = result.assets[0].uri;
+      setLiveToast({
+        id: Date.now(),
+        title: 'Analyzing Live Selfie',
+        message: 'Uploading and processing real camera verification selfie...',
+        type: 'info',
+      });
+
+      // Upload to ScalePixel
+      const uploadRes = await uploadProviderDocToScalePixel(selfieUri, activeProviderId, 'selfie');
+      if (uploadRes.success && uploadRes.downloadUrl) {
+        const selfieUrl = uploadRes.downloadUrl;
+
+        // Submit to backend
+        const subRes = await submitProviderLiveSelfieApi(activeProviderId, selfieUrl);
+        if (subRes.success) {
+          // Update profile photo and local state
+          setLocalAvatarUrl(selfieUrl);
+          setProfileData((prev) => (prev ? { ...prev, avatar_url: selfieUrl } : ({ avatar_url: selfieUrl } as any)));
+          setProviderUser((prev) => (prev ? { ...prev, avatar_url: selfieUrl } : ({ avatar_url: selfieUrl } as any)));
+
+          const cached = await getStoredProviderUser();
+          if (cached) {
+            cached.avatar_url = selfieUrl;
+            await storeProviderUser(cached);
+          }
+          await AsyncStorage.setItem(`@serveasy_avatar_${activeProviderId}`, selfieUrl);
+
+          Alert.alert(
+            'Live Selfie Captured! ✅',
+            'Your real live camera selfie has been successfully recorded and submitted as your 5th trust verification pillar.'
+          );
+          loadLiveData(false);
+        } else {
+          Alert.alert('Submission Failed', subRes.message || 'Could not record live selfie.');
+        }
+      } else {
+        Alert.alert('Upload Failed', uploadRes.message || 'ScalePixel could not process your selfie.');
+      }
+    } catch (err: any) {
+      console.error('[Live Selfie] Error:', err);
+      Alert.alert('Capture Error', err?.message || 'Failed to capture live selfie.');
+    } finally {
+      setIsCapturingSelfie(false);
+    }
+  };
+
+  // ─── Document KYC Photo Picker (Front & Back) ──────────────────────────────
+  const handlePickKycDocImage = async (side: 'front' | 'back', source: 'camera' | 'gallery') => {
+    if (!activeProviderId) {
+      Alert.alert('Sign In Required', 'Please sign in to upload ID documents.');
+      return;
+    }
+
+    let ImagePicker: any = null;
+    try {
+      ImagePicker = require('expo-image-picker');
+    } catch (_) {
+      ImagePicker = null;
+    }
+
+    if (!ImagePicker) {
+      Alert.alert('Error', 'Image picker is not available on this device.');
+      return;
+    }
+
+    try {
+      let result;
+      if (source === 'camera') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Denied', 'Camera permission is required to photograph your ID document.');
+          return;
+        }
+        result = await ImagePicker.launchCameraAsync({
+          allowsEditing: false,
+          quality: 0.85,
+        });
+      } else {
+        result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions ? ImagePicker.MediaTypeOptions.Images : ['images'],
+          allowsEditing: false,
+          quality: 0.85,
+        });
+      }
+
+      if (result.canceled || !result.assets || !result.assets[0]?.uri) {
+        return;
+      }
+
+      const pickedUri = result.assets[0].uri;
+      if (side === 'front') setIsUploadingKycFront(true);
+      else setIsUploadingKycBack(true);
+
+      const uploadRes = await uploadProviderDocToScalePixel(pickedUri, activeProviderId, side);
+      if (uploadRes.success && uploadRes.downloadUrl) {
+        if (side === 'front') {
+          setKycFrontImage(uploadRes.downloadUrl);
+        } else {
+          setKycBackImage(uploadRes.downloadUrl);
+        }
+        setLiveToast({
+          id: Date.now(),
+          title: `${side === 'front' ? 'Front' : 'Back'} Photo Ready`,
+          message: 'Document photo uploaded and optimized successfully.',
+          type: 'success',
+        });
+      } else {
+        Alert.alert('Upload Failed', uploadRes.message || 'ScalePixel could not process document photo.');
+      }
+    } catch (err: any) {
+      console.error('[KYC Doc] Upload error:', err);
+      Alert.alert('Upload Error', err?.message || 'Failed to upload document photo.');
+    } finally {
+      if (side === 'front') setIsUploadingKycFront(false);
+      else setIsUploadingKycBack(false);
+    }
+  };
+
+  // ─── Submit Government ID Proof Document ─────────────────────────────────────
+  const handleSubmitKycDocument = async () => {
+    if (!activeProviderId) {
+      Alert.alert('Sign In Required', 'Please sign in to submit KYC documents.');
+      return;
+    }
+    if (!kycIdNumber || kycIdNumber.trim().length < 4) {
+      Alert.alert('Invalid ID Number', 'Please enter a valid Government ID / Document Number.');
+      return;
+    }
+    if (!kycFrontImage) {
+      Alert.alert('Front Photo Required', 'Please capture or upload the front photo of your Government ID.');
+      return;
+    }
+
+    setIsSubmittingKyc(true);
+    try {
+      const res = await submitProviderKycApi(activeProviderId, {
+        id_type: kycIdType,
+        id_number: kycIdNumber.trim(),
+        id_front_image: kycFrontImage,
+        id_back_image: kycBackImage || undefined,
+      });
+
+      if (res.success) {
+        setKycModalVisible(false);
+        Alert.alert(
+          'Government ID Submitted! 🪪',
+          'Your ID verification documents have been submitted and are now under review by the ServEasy administration team.'
+        );
+        loadLiveData(false);
+      } else {
+        Alert.alert('Submission Failed', res.message || 'Could not submit KYC document.');
+      }
+    } catch (err: any) {
+      Alert.alert('Submission Error', err?.message || 'Network error submitting KYC document.');
+    } finally {
+      setIsSubmittingKyc(false);
     }
   };
 
@@ -2478,61 +2735,87 @@ function ProviderAppContent() {
               </View>
             )}
 
-            {/* 4 Pillars Grid (Phone, Email, Address, Government ID Proof) */}
+            {/* 5 Pillars Grid (Phone, Email, Address, Government ID Proof, Live Camera Selfie) */}
             <View style={styles.pillarsGrid}>
-              {/* Pillar 1: Phone */}
-              <View style={[styles.pillarBox, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}>
+              {/* Pillar 1: Phone (20%) */}
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => setPhoneModalVisible(true)}
+                style={[styles.pillarBox, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}
+              >
                 <View style={styles.pillarHeaderRow}>
                   <MaterialCommunityIcons name="phone" size={16} color={progress?.pillars?.phone?.done ? '#30D158' : '#FF453A'} />
-                  <Text style={[styles.pillarName, { color: activeTheme.textPrimary }]}>Phone (25%)</Text>
+                  <Text style={[styles.pillarName, { color: activeTheme.textPrimary }]}>Phone (20%)</Text>
                 </View>
                 <View style={[styles.pillarBadge, { backgroundColor: progress?.pillars?.phone?.done ? 'rgba(48,209,88,0.15)' : 'rgba(255,69,58,0.15)' }]}>
                   <Text style={[styles.pillarBadgeText, { color: progress?.pillars?.phone?.done ? '#30D158' : '#FF453A' }]}>
-                    {progress?.pillars?.phone?.badge || 'Verified'}
+                    {progress?.pillars?.phone?.badge || (progress?.pillars?.phone?.done ? 'Verified' : 'Missing')}
                   </Text>
                 </View>
                 <Text style={[styles.pillarVal, { color: activeTheme.textSecondary }]} numberOfLines={1}>
                   {progress?.pillars?.phone?.val || formPhone || 'Missing'}
                 </Text>
-              </View>
+              </TouchableOpacity>
 
-              {/* Pillar 2: Email */}
-              <View style={[styles.pillarBox, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}>
+              {/* Pillar 2: Email (20%) */}
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => setEmailModalVisible(true)}
+                style={[styles.pillarBox, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}
+              >
                 <View style={styles.pillarHeaderRow}>
                   <MaterialCommunityIcons name="email" size={16} color={progress?.pillars?.email?.done ? '#30D158' : '#FF453A'} />
-                  <Text style={[styles.pillarName, { color: activeTheme.textPrimary }]}>Email (25%)</Text>
+                  <Text style={[styles.pillarName, { color: activeTheme.textPrimary }]}>Email (20%)</Text>
                 </View>
                 <View style={[styles.pillarBadge, { backgroundColor: progress?.pillars?.email?.done ? 'rgba(48,209,88,0.15)' : 'rgba(255,69,58,0.15)' }]}>
                   <Text style={[styles.pillarBadgeText, { color: progress?.pillars?.email?.done ? '#30D158' : '#FF453A' }]}>
-                    {progress?.pillars?.email?.badge || 'Verified'}
+                    {progress?.pillars?.email?.badge || (progress?.pillars?.email?.done ? 'Verified' : 'Missing')}
                   </Text>
                 </View>
                 <Text style={[styles.pillarVal, { color: activeTheme.textSecondary }]} numberOfLines={1}>
                   {progress?.pillars?.email?.val || formEmail || 'Missing'}
                 </Text>
-              </View>
+              </TouchableOpacity>
 
-              {/* Pillar 3: Address */}
-              <View style={[styles.pillarBox, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}>
+              {/* Pillar 3: Address (20%) */}
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => setAddressModalVisible(true)}
+                style={[styles.pillarBox, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}
+              >
                 <View style={styles.pillarHeaderRow}>
                   <MaterialCommunityIcons name="map-marker" size={16} color={progress?.pillars?.address?.done ? '#30D158' : '#FF453A'} />
-                  <Text style={[styles.pillarName, { color: activeTheme.textPrimary }]}>Address (25%)</Text>
+                  <Text style={[styles.pillarName, { color: activeTheme.textPrimary }]}>Address (20%)</Text>
                 </View>
                 <View style={[styles.pillarBadge, { backgroundColor: progress?.pillars?.address?.done ? 'rgba(48,209,88,0.15)' : 'rgba(255,69,58,0.15)' }]}>
                   <Text style={[styles.pillarBadgeText, { color: progress?.pillars?.address?.done ? '#30D158' : '#FF453A' }]}>
-                    {progress?.pillars?.address?.badge || 'Completed'}
+                    {progress?.pillars?.address?.badge || (progress?.pillars?.address?.done ? 'Completed' : 'Missing')}
                   </Text>
                 </View>
                 <Text style={[styles.pillarVal, { color: activeTheme.textSecondary }]} numberOfLines={1}>
                   {formAddress || 'Missing'}
                 </Text>
-              </View>
+              </TouchableOpacity>
 
-              {/* Pillar 4: ID Proof */}
-              <View style={[styles.pillarBox, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}>
+              {/* Pillar 4: ID Proof (20%) */}
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => setKycModalVisible(true)}
+                style={[styles.pillarBox, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}
+              >
                 <View style={styles.pillarHeaderRow}>
-                  <MaterialCommunityIcons name="shield-account" size={16} color={progress?.pillars?.id_proof?.done ? '#30D158' : '#FFD60A'} />
-                  <Text style={[styles.pillarName, { color: activeTheme.textPrimary }]}>Govt ID (25%)</Text>
+                  <MaterialCommunityIcons
+                    name="shield-account"
+                    size={16}
+                    color={
+                      progress?.pillars?.id_proof?.done
+                        ? '#30D158'
+                        : progress?.pillars?.id_proof?.badge === 'Under Review'
+                        ? '#FFD60A'
+                        : '#FF453A'
+                    }
+                  />
+                  <Text style={[styles.pillarName, { color: activeTheme.textPrimary }]}>Govt ID (20%)</Text>
                 </View>
                 <View
                   style={[
@@ -2558,13 +2841,70 @@ function ProviderAppContent() {
                       },
                     ]}
                   >
-                    {progress?.pillars?.id_proof?.badge || 'Approved'}
+                    {progress?.pillars?.id_proof?.badge || (progress?.pillars?.id_proof?.done ? 'Approved' : 'Missing')}
                   </Text>
                 </View>
                 <Text style={[styles.pillarVal, { color: activeTheme.textSecondary }]} numberOfLines={1}>
-                  {progress?.pillars?.id_proof?.val || 'Aadhaar Verified'}
+                  {progress?.pillars?.id_proof?.val || 'Aadhaar / PAN'}
                 </Text>
-              </View>
+              </TouchableOpacity>
+
+              {/* Pillar 5: Real Camera Live Selfie (20%) */}
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={() => {
+                  if (progress?.pillars?.selfie?.done) {
+                    setSelfieModalVisible(true);
+                  } else {
+                    handleCaptureLiveSelfie();
+                  }
+                }}
+                style={[
+                  styles.pillarBox,
+                  {
+                    backgroundColor: activeTheme.tableHeaderBg,
+                    borderColor: progress?.pillars?.selfie?.done ? 'rgba(48,209,88,0.4)' : '#00E5FF',
+                    minWidth: '100%',
+                    marginTop: 4,
+                  },
+                ]}
+              >
+                <View style={[styles.pillarHeaderRow, { justifyContent: 'space-between' }]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <MaterialCommunityIcons
+                      name="camera-account"
+                      size={17}
+                      color={progress?.pillars?.selfie?.done ? '#30D158' : '#00E5FF'}
+                    />
+                    <Text style={[styles.pillarName, { color: activeTheme.textPrimary, fontWeight: '700' }]}>
+                      Real Camera Selfie (20%)
+                    </Text>
+                  </View>
+                  <View
+                    style={[
+                      styles.pillarBadge,
+                      {
+                        backgroundColor: progress?.pillars?.selfie?.done ? 'rgba(48,209,88,0.15)' : 'rgba(0,229,255,0.15)',
+                        marginVertical: 0,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.pillarBadgeText,
+                        { color: progress?.pillars?.selfie?.done ? '#30D158' : '#00E5FF', fontWeight: '800' },
+                      ]}
+                    >
+                      {progress?.pillars?.selfie?.done ? 'Verified Face ✅' : 'Tap to Snap 📸'}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[styles.pillarVal, { color: activeTheme.textSecondary, marginTop: 4 }]} numberOfLines={1}>
+                  {progress?.pillars?.selfie?.done
+                    ? 'Native front camera verification photo recorded'
+                    : 'Strictly live device camera (No gallery upload allowed)'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </GlassCard>
         )}
@@ -3511,59 +3851,121 @@ function ProviderAppContent() {
           </View>
         </GlassCard>
 
-        {/* 4 Pillars Grid */}
+        {/* 5 Pillars Grid (Phone, Email, Address, Government ID Proof, Live Camera Selfie) */}
         <View style={styles.pillarsGrid}>
-          {/* Pillar 1: Phone */}
-          <View style={[styles.pillarBox, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}>
+          {/* Pillar 1: Phone (20%) */}
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => setPhoneModalVisible(true)}
+            style={[styles.pillarBox, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}
+          >
             <View style={styles.pillarHeaderRow}>
               <MaterialCommunityIcons name="phone" size={16} color={progress?.pillars?.phone?.done ? '#30D158' : '#FF453A'} />
-              <Text style={[styles.pillarName, { color: activeTheme.textPrimary }]}>Phone (25%)</Text>
+              <Text style={[styles.pillarName, { color: activeTheme.textPrimary }]}>Phone (20%)</Text>
             </View>
             <View style={[styles.pillarBadge, { backgroundColor: progress?.pillars?.phone?.done ? 'rgba(48,209,88,0.15)' : 'rgba(255,69,58,0.15)' }]}>
               <Text style={[styles.pillarBadgeText, { color: progress?.pillars?.phone?.done ? '#30D158' : '#FF453A' }]}>
                 {progress?.pillars?.phone?.done ? 'Verified' : 'Missing'}
               </Text>
             </View>
-          </View>
+          </TouchableOpacity>
 
-          {/* Pillar 2: Email */}
-          <View style={[styles.pillarBox, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}>
+          {/* Pillar 2: Email (20%) */}
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => setEmailModalVisible(true)}
+            style={[styles.pillarBox, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}
+          >
             <View style={styles.pillarHeaderRow}>
               <MaterialCommunityIcons name="email" size={16} color={progress?.pillars?.email?.done ? '#30D158' : '#FF453A'} />
-              <Text style={[styles.pillarName, { color: activeTheme.textPrimary }]}>Email (25%)</Text>
+              <Text style={[styles.pillarName, { color: activeTheme.textPrimary }]}>Email (20%)</Text>
             </View>
             <View style={[styles.pillarBadge, { backgroundColor: progress?.pillars?.email?.done ? 'rgba(48,209,88,0.15)' : 'rgba(255,69,58,0.15)' }]}>
               <Text style={[styles.pillarBadgeText, { color: progress?.pillars?.email?.done ? '#30D158' : '#FF453A' }]}>
                 {progress?.pillars?.email?.done ? 'Verified' : 'Missing'}
               </Text>
             </View>
-          </View>
+          </TouchableOpacity>
 
-          {/* Pillar 3: Address */}
-          <View style={[styles.pillarBox, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}>
+          {/* Pillar 3: Address (20%) */}
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => setAddressModalVisible(true)}
+            style={[styles.pillarBox, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}
+          >
             <View style={styles.pillarHeaderRow}>
               <MaterialCommunityIcons name="map-marker" size={16} color={progress?.pillars?.address?.done ? '#30D158' : '#FF453A'} />
-              <Text style={[styles.pillarName, { color: activeTheme.textPrimary }]}>Address (25%)</Text>
+              <Text style={[styles.pillarName, { color: activeTheme.textPrimary }]}>Address (20%)</Text>
             </View>
             <View style={[styles.pillarBadge, { backgroundColor: progress?.pillars?.address?.done ? 'rgba(48,209,88,0.15)' : 'rgba(255,69,58,0.15)' }]}>
               <Text style={[styles.pillarBadgeText, { color: progress?.pillars?.address?.done ? '#30D158' : '#FF453A' }]}>
                 {progress?.pillars?.address?.done ? 'Verified' : 'Missing'}
               </Text>
             </View>
-          </View>
+          </TouchableOpacity>
 
-          {/* Pillar 4: ID Proof */}
-          <View style={[styles.pillarBox, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}>
+          {/* Pillar 4: ID Proof (20%) */}
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => setKycModalVisible(true)}
+            style={[styles.pillarBox, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}
+          >
             <View style={styles.pillarHeaderRow}>
               <MaterialCommunityIcons name="card-account-details" size={16} color={progress?.pillars?.id_proof?.done ? '#30D158' : '#FF453A'} />
-              <Text style={[styles.pillarName, { color: activeTheme.textPrimary }]}>ID Proof (25%)</Text>
+              <Text style={[styles.pillarName, { color: activeTheme.textPrimary }]}>ID Proof (20%)</Text>
             </View>
             <View style={[styles.pillarBadge, { backgroundColor: progress?.pillars?.id_proof?.done ? 'rgba(48,209,88,0.15)' : 'rgba(255,69,58,0.15)' }]}>
               <Text style={[styles.pillarBadgeText, { color: progress?.pillars?.id_proof?.done ? '#30D158' : '#FF453A' }]}>
-                {progress?.pillars?.id_proof?.done ? 'Approved' : 'Pending'}
+                {progress?.pillars?.id_proof?.badge || (progress?.pillars?.id_proof?.done ? 'Approved' : 'Pending')}
               </Text>
             </View>
-          </View>
+          </TouchableOpacity>
+
+          {/* Pillar 5: Real Camera Selfie (20%) */}
+          <TouchableOpacity
+            activeOpacity={0.75}
+            onPress={() => {
+              if (progress?.pillars?.selfie?.done) {
+                setSelfieModalVisible(true);
+              } else {
+                handleCaptureLiveSelfie();
+              }
+            }}
+            style={[
+              styles.pillarBox,
+              {
+                backgroundColor: activeTheme.tableHeaderBg,
+                borderColor: progress?.pillars?.selfie?.done ? 'rgba(48,209,88,0.4)' : '#00E5FF',
+                minWidth: '100%',
+                marginTop: 4,
+              },
+            ]}
+          >
+            <View style={[styles.pillarHeaderRow, { justifyContent: 'space-between' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <MaterialCommunityIcons name="camera-account" size={16} color={progress?.pillars?.selfie?.done ? '#30D158' : '#00E5FF'} />
+                <Text style={[styles.pillarName, { color: activeTheme.textPrimary, fontWeight: '700' }]}>Real Camera Selfie (20%)</Text>
+              </View>
+              <View
+                style={[
+                  styles.pillarBadge,
+                  {
+                    backgroundColor: progress?.pillars?.selfie?.done ? 'rgba(48,209,88,0.15)' : 'rgba(0,229,255,0.15)',
+                    marginVertical: 0,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.pillarBadgeText,
+                    { color: progress?.pillars?.selfie?.done ? '#30D158' : '#00E5FF', fontWeight: '800' },
+                  ]}
+                >
+                  {progress?.pillars?.selfie?.done ? 'Verified Face ✅' : 'Tap to Snap 📸'}
+                </Text>
+              </View>
+            </View>
+          </TouchableOpacity>
         </View>
 
         {/* Action card to edit/manage profile & ID proof */}
@@ -7045,6 +7447,660 @@ function ProviderAppContent() {
                 <Text style={{ fontSize: 14, fontWeight: '700', color: activeTheme.textPrimary }}>
                   Cancel
                 </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ─── 1. Phone Verification Modal ────────────────────────────────────── */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          statusBarTranslucent={true}
+          visible={phoneModalVisible}
+          onRequestClose={() => setPhoneModalVisible(false)}
+        >
+          <View style={styles.bottomSheetRoot}>
+            <TouchableOpacity
+              style={styles.bottomSheetBackdrop}
+              activeOpacity={1}
+              onPress={() => setPhoneModalVisible(false)}
+            />
+            <View
+              style={[
+                styles.bottomSheetCard,
+                {
+                  backgroundColor: theme === 'dark' ? '#11141C' : '#FFFFFF',
+                  borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(15, 23, 42, 0.08)',
+                  paddingBottom: Math.max(insets.bottom, 16) + 16,
+                  maxHeight: SCREEN_HEIGHT * 0.85,
+                  width: '100%',
+                },
+              ]}
+            >
+              <View style={[styles.bottomSheetHandle, { backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.25)' : 'rgba(15, 23, 42, 0.2)' }]} />
+              <ScrollView showsVerticalScrollIndicator={false} style={{ width: '100%' }} keyboardShouldPersistTaps="handled">
+                <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                  <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(48,209,88,0.15)', borderWidth: 1, borderColor: '#30D158', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+                    <MaterialCommunityIcons name="phone-check" size={26} color="#30D158" />
+                  </View>
+                  <Text style={{ fontSize: 19, fontWeight: '800', color: activeTheme.textPrimary, textAlign: 'center' }}>
+                    Phone Verification (20%)
+                  </Text>
+                  <Text style={{ fontSize: 12, color: activeTheme.textSecondary, textAlign: 'center', marginTop: 4 }}>
+                    Manage your primary contact and alternative emergency number.
+                  </Text>
+                </View>
+
+                {/* Primary Phone Input */}
+                <View style={{ marginBottom: 14 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: activeTheme.textPrimary }}>
+                      Primary Phone Number:
+                    </Text>
+                    <View style={{ backgroundColor: 'rgba(48,209,88,0.15)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#30D158' }}>Default Account</Text>
+                    </View>
+                  </View>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={formPhone}
+                    onChangeText={setFormPhone}
+                    placeholder="e.g. 9876543210"
+                    placeholderTextColor={activeTheme.textSecondary}
+                    keyboardType="phone-pad"
+                  />
+                  <Text style={{ fontSize: 11, color: activeTheme.textSecondary, marginTop: 4 }}>
+                    Used for login, instant customer bookings, and emergency alerts.
+                  </Text>
+                </View>
+
+                {/* Alternative Phone Input */}
+                <View style={{ marginBottom: 20 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: activeTheme.textPrimary }}>
+                      Alternative Phone Number:
+                    </Text>
+                    <View style={{ backgroundColor: 'rgba(0,132,255,0.15)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#0084FF' }}>Secondary Contact</Text>
+                    </View>
+                  </View>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={formAltPhone}
+                    onChangeText={setFormAltPhone}
+                    placeholder="Enter secondary contact number"
+                    placeholderTextColor={activeTheme.textSecondary}
+                    keyboardType="phone-pad"
+                  />
+                  <Text style={{ fontSize: 11, color: activeTheme.textSecondary, marginTop: 4 }}>
+                    Stored in provider profile for backup customer communications.
+                  </Text>
+                </View>
+
+                {/* Action Buttons */}
+                <TouchableOpacity
+                  style={{ width: '100%', paddingVertical: 14, borderRadius: 14, backgroundColor: '#05c279', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}
+                  activeOpacity={0.8}
+                  onPress={async () => {
+                    await handleSaveProfile();
+                    setPhoneModalVisible(false);
+                  }}
+                  disabled={isSavingProfile}
+                >
+                  {isSavingProfile ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Save Phone Details</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{ width: '100%', paddingVertical: 12, borderRadius: 14, backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)', alignItems: 'center' }}
+                  activeOpacity={0.7}
+                  onPress={() => setPhoneModalVisible(false)}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: activeTheme.textPrimary }}>Close</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ─── 2. Email Verification Modal ────────────────────────────────────── */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          statusBarTranslucent={true}
+          visible={emailModalVisible}
+          onRequestClose={() => setEmailModalVisible(false)}
+        >
+          <View style={styles.bottomSheetRoot}>
+            <TouchableOpacity
+              style={styles.bottomSheetBackdrop}
+              activeOpacity={1}
+              onPress={() => setEmailModalVisible(false)}
+            />
+            <View
+              style={[
+                styles.bottomSheetCard,
+                {
+                  backgroundColor: theme === 'dark' ? '#11141C' : '#FFFFFF',
+                  borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(15, 23, 42, 0.08)',
+                  paddingBottom: Math.max(insets.bottom, 16) + 16,
+                  width: '100%',
+                },
+              ]}
+            >
+              <View style={[styles.bottomSheetHandle, { backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.25)' : 'rgba(15, 23, 42, 0.2)' }]} />
+              <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(0,132,255,0.15)', borderWidth: 1, borderColor: '#0084FF', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+                  <MaterialCommunityIcons name="email-check-outline" size={26} color="#0084FF" />
+                </View>
+                <Text style={{ fontSize: 19, fontWeight: '800', color: activeTheme.textPrimary, textAlign: 'center' }}>
+                  Email Verification (20%)
+                </Text>
+                <Text style={{ fontSize: 12, color: activeTheme.textSecondary, textAlign: 'center', marginTop: 4 }}>
+                  Verified email for official receipts, bookings, and statements.
+                </Text>
+              </View>
+
+              <View style={{ width: '100%', padding: 14, borderRadius: 14, backgroundColor: activeTheme.tableHeaderBg, borderWidth: 1, borderColor: activeTheme.cardBorder, marginBottom: 16 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <Text style={{ fontSize: 12, color: activeTheme.textSecondary }}>Registered Address</Text>
+                  <View style={{ backgroundColor: 'rgba(48,209,88,0.15)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: '#30D158' }}>OTP Verified ✅</Text>
+                  </View>
+                </View>
+                <Text style={{ fontSize: 15, fontWeight: '700', color: activeTheme.textPrimary }}>
+                  {formEmail || 'No Email Registered'}
+                </Text>
+              </View>
+
+              <Text style={{ fontSize: 12, color: activeTheme.textSecondary, textAlign: 'center', marginBottom: 20, paddingHorizontal: 10, lineHeight: 18 }}>
+                Every service completion report, weekly earnings payout invoice, and admin compliance notice is delivered to this address.
+              </Text>
+
+              <TouchableOpacity
+                style={{ width: '100%', paddingVertical: 14, borderRadius: 14, backgroundColor: '#05c279', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}
+                activeOpacity={0.8}
+                onPress={() => setEmailModalVisible(false)}
+              >
+                <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Understood</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ─── 3. Address & Map Pinning Modal ─────────────────────────────────── */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          statusBarTranslucent={true}
+          visible={addressModalVisible}
+          onRequestClose={() => setAddressModalVisible(false)}
+        >
+          <View style={styles.bottomSheetRoot}>
+            <TouchableOpacity
+              style={styles.bottomSheetBackdrop}
+              activeOpacity={1}
+              onPress={() => setAddressModalVisible(false)}
+            />
+            <View
+              style={[
+                styles.bottomSheetCard,
+                {
+                  backgroundColor: theme === 'dark' ? '#11141C' : '#FFFFFF',
+                  borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(15, 23, 42, 0.08)',
+                  paddingBottom: Math.max(insets.bottom, 16) + 16,
+                  maxHeight: SCREEN_HEIGHT * 0.85,
+                  width: '100%',
+                },
+              ]}
+            >
+              <View style={[styles.bottomSheetHandle, { backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.25)' : 'rgba(15, 23, 42, 0.2)' }]} />
+              <ScrollView showsVerticalScrollIndicator={false} style={{ width: '100%' }} keyboardShouldPersistTaps="handled">
+                <View style={{ alignItems: 'center', marginBottom: 16 }}>
+                  <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,149,0,0.15)', borderWidth: 1, borderColor: '#FF9500', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+                    <MaterialCommunityIcons name="map-marker-radius" size={26} color="#FF9500" />
+                  </View>
+                  <Text style={{ fontSize: 19, fontWeight: '800', color: activeTheme.textPrimary, textAlign: 'center' }}>
+                    Address Details (20%)
+                  </Text>
+                  <Text style={{ fontSize: 12, color: activeTheme.textSecondary, textAlign: 'center', marginTop: 4 }}>
+                    Define your default workshop base and secondary service locations.
+                  </Text>
+                </View>
+
+                {/* Default Address */}
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: activeTheme.textPrimary, marginBottom: 4 }}>
+                    Default / Workshop Address:
+                  </Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg, minHeight: 46 }]}
+                    value={formAddress}
+                    onChangeText={setFormAddress}
+                    placeholder="Enter default workshop or doorstep base address"
+                    placeholderTextColor={activeTheme.textSecondary}
+                    multiline
+                  />
+                </View>
+
+                {/* Other Address */}
+                <View style={{ marginBottom: 12 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: activeTheme.textPrimary, marginBottom: 4 }}>
+                    Other / Branch Address:
+                  </Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg, minHeight: 46 }]}
+                    value={formOtherAddress}
+                    onChangeText={setFormOtherAddress}
+                    placeholder="Enter secondary facility or residential address"
+                    placeholderTextColor={activeTheme.textSecondary}
+                    multiline
+                  />
+                </View>
+
+                {/* Landmark & Pincode */}
+                <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: activeTheme.textPrimary, marginBottom: 4 }}>
+                      Landmark:
+                    </Text>
+                    <TextInput
+                      style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                      value={formLandmark}
+                      onChangeText={setFormLandmark}
+                      placeholder="Nearby landmark"
+                      placeholderTextColor={activeTheme.textSecondary}
+                    />
+                  </View>
+                  <View style={{ width: 110 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: activeTheme.textPrimary, marginBottom: 4 }}>
+                      Pincode:
+                    </Text>
+                    <TextInput
+                      style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                      value={formPincode}
+                      onChangeText={setFormPincode}
+                      placeholder="e.g. 700052"
+                      placeholderTextColor={activeTheme.textSecondary}
+                      keyboardType="number-pad"
+                    />
+                  </View>
+                </View>
+
+                {/* Live GPS Pin button */}
+                <TouchableOpacity
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 12, backgroundColor: activeTheme.tableHeaderBg, borderWidth: 1, borderColor: '#0084FF', marginBottom: 16 }}
+                  activeOpacity={0.8}
+                  onPress={handleUseLiveLocation}
+                  disabled={isLocating}
+                >
+                  {isLocating ? (
+                    <ActivityIndicator size="small" color="#0084FF" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="crosshairs-gps" size={18} color="#0084FF" />
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#0084FF' }}>Auto-Detect Current GPS Location</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                {/* Save button */}
+                <TouchableOpacity
+                  style={{ width: '100%', paddingVertical: 14, borderRadius: 14, backgroundColor: '#05c279', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}
+                  activeOpacity={0.8}
+                  onPress={async () => {
+                    await handleSaveProfile();
+                    setAddressModalVisible(false);
+                  }}
+                  disabled={isSavingProfile}
+                >
+                  {isSavingProfile ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Save Address Details</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{ width: '100%', paddingVertical: 12, borderRadius: 14, backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)', alignItems: 'center' }}
+                  activeOpacity={0.7}
+                  onPress={() => setAddressModalVisible(false)}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: activeTheme.textPrimary }}>Close</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ─── 4. Government ID Proof Submission Modal ────────────────────────── */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          statusBarTranslucent={true}
+          visible={kycModalVisible}
+          onRequestClose={() => setKycModalVisible(false)}
+        >
+          <View style={styles.bottomSheetRoot}>
+            <TouchableOpacity
+              style={styles.bottomSheetBackdrop}
+              activeOpacity={1}
+              onPress={() => setKycModalVisible(false)}
+            />
+            <View
+              style={[
+                styles.bottomSheetCard,
+                {
+                  backgroundColor: theme === 'dark' ? '#11141C' : '#FFFFFF',
+                  borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(15, 23, 42, 0.08)',
+                  paddingBottom: Math.max(insets.bottom, 16) + 16,
+                  maxHeight: SCREEN_HEIGHT * 0.9,
+                  width: '100%',
+                },
+              ]}
+            >
+              <View style={[styles.bottomSheetHandle, { backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.25)' : 'rgba(15, 23, 42, 0.2)' }]} />
+              <ScrollView showsVerticalScrollIndicator={false} style={{ width: '100%' }} keyboardShouldPersistTaps="handled">
+                <View style={{ alignItems: 'center', marginBottom: 14 }}>
+                  <View style={{ width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(255,214,10,0.15)', borderWidth: 1, borderColor: '#FFD60A', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                    <MaterialCommunityIcons name="shield-account" size={26} color="#FFD60A" />
+                  </View>
+                  <Text style={{ fontSize: 19, fontWeight: '800', color: activeTheme.textPrimary, textAlign: 'center' }}>
+                    Government ID Verification (20%)
+                  </Text>
+                  <Text style={{ fontSize: 12, color: activeTheme.textSecondary, textAlign: 'center', marginTop: 4 }}>
+                    Submit clear photos of your official identity proof for admin approval.
+                  </Text>
+                </View>
+
+                {/* ID Type Selector Chips */}
+                <Text style={{ fontSize: 13, fontWeight: '700', color: activeTheme.textPrimary, marginBottom: 8 }}>
+                  Select Document Type:
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
+                  {[
+                    { id: 'aadhaar', label: 'Aadhaar Card' },
+                    { id: 'pan', label: 'PAN Card' },
+                    { id: 'voter_id', label: 'Voter ID' },
+                    { id: 'driving_license', label: 'Driving License' },
+                    { id: 'passport', label: 'Passport' },
+                  ].map((t) => {
+                    const isSelected = kycIdType === t.id;
+                    return (
+                      <TouchableOpacity
+                        key={t.id}
+                        activeOpacity={0.7}
+                        onPress={() => setKycIdType(t.id as any)}
+                        style={{
+                          paddingHorizontal: 12,
+                          paddingVertical: 7,
+                          borderRadius: 20,
+                          backgroundColor: isSelected ? '#05c279' : activeTheme.tableHeaderBg,
+                          borderWidth: 1,
+                          borderColor: isSelected ? '#05c279' : activeTheme.cardBorder,
+                        }}
+                      >
+                        <Text style={{ fontSize: 12, fontWeight: isSelected ? '700' : '500', color: isSelected ? '#FFFFFF' : activeTheme.textPrimary }}>
+                          {t.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                {/* ID Document Number */}
+                <View style={{ marginBottom: 14 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: activeTheme.textPrimary, marginBottom: 6 }}>
+                    Document / Card Number:
+                  </Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={kycIdNumber}
+                    onChangeText={setKycIdNumber}
+                    placeholder="Enter document number (e.g. 12-digit Aadhaar / PAN)"
+                    placeholderTextColor={activeTheme.textSecondary}
+                    autoCapitalize="characters"
+                  />
+                </View>
+
+                {/* Document Front Photo */}
+                <View style={{ marginBottom: 14, padding: 12, borderRadius: 14, backgroundColor: activeTheme.tableHeaderBg, borderWidth: 1, borderColor: activeTheme.cardBorder }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: activeTheme.textPrimary }}>
+                      Document Front Photo *
+                    </Text>
+                    {kycFrontImage && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <MaterialCommunityIcons name="check-circle" size={14} color="#30D158" />
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#30D158' }}>Uploaded</Text>
+                      </View>
+                    )}
+                  </View>
+                  {kycFrontImage ? (
+                    <View style={{ alignItems: 'center', marginVertical: 6 }}>
+                      <Image source={{ uri: kycFrontImage }} style={{ width: '100%', height: 140, borderRadius: 10, resizeMode: 'cover' }} />
+                      <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                        <TouchableOpacity
+                          style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: 'rgba(0,229,255,0.15)' }}
+                          onPress={() => handlePickKycDocImage('front', 'camera')}
+                        >
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#00E5FF' }}>Retake Camera</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: 'rgba(5,194,121,0.15)' }}
+                          onPress={() => handlePickKycDocImage('front', 'gallery')}
+                        >
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#05c279' }}>Change Gallery</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <TouchableOpacity
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 10, backgroundColor: 'rgba(0,229,255,0.12)', borderWidth: 1, borderColor: 'rgba(0,229,255,0.3)' }}
+                        onPress={() => handlePickKycDocImage('front', 'camera')}
+                        disabled={isUploadingKycFront}
+                      >
+                        {isUploadingKycFront ? (
+                          <ActivityIndicator size="small" color="#00E5FF" />
+                        ) : (
+                          <>
+                            <MaterialCommunityIcons name="camera" size={17} color="#00E5FF" />
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#00E5FF' }}>Take Photo</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 10, backgroundColor: 'rgba(5,194,121,0.12)', borderWidth: 1, borderColor: 'rgba(5,194,121,0.3)' }}
+                        onPress={() => handlePickKycDocImage('front', 'gallery')}
+                        disabled={isUploadingKycFront}
+                      >
+                        <MaterialCommunityIcons name="image" size={17} color="#05c279" />
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#05c279' }}>Gallery</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+
+                {/* Document Back Photo */}
+                <View style={{ marginBottom: 18, padding: 12, borderRadius: 14, backgroundColor: activeTheme.tableHeaderBg, borderWidth: 1, borderColor: activeTheme.cardBorder }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: activeTheme.textPrimary }}>
+                      Document Back Photo (Optional)
+                    </Text>
+                    {kycBackImage && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        <MaterialCommunityIcons name="check-circle" size={14} color="#30D158" />
+                        <Text style={{ fontSize: 11, fontWeight: '700', color: '#30D158' }}>Uploaded</Text>
+                      </View>
+                    )}
+                  </View>
+                  {kycBackImage ? (
+                    <View style={{ alignItems: 'center', marginVertical: 6 }}>
+                      <Image source={{ uri: kycBackImage }} style={{ width: '100%', height: 140, borderRadius: 10, resizeMode: 'cover' }} />
+                      <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
+                        <TouchableOpacity
+                          style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: 'rgba(0,229,255,0.15)' }}
+                          onPress={() => handlePickKycDocImage('back', 'camera')}
+                        >
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#00E5FF' }}>Retake Camera</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: 'rgba(5,194,121,0.15)' }}
+                          onPress={() => handlePickKycDocImage('back', 'gallery')}
+                        >
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#05c279' }}>Change Gallery</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <TouchableOpacity
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 10, backgroundColor: 'rgba(0,229,255,0.12)', borderWidth: 1, borderColor: 'rgba(0,229,255,0.3)' }}
+                        onPress={() => handlePickKycDocImage('back', 'camera')}
+                        disabled={isUploadingKycBack}
+                      >
+                        {isUploadingKycBack ? (
+                          <ActivityIndicator size="small" color="#00E5FF" />
+                        ) : (
+                          <>
+                            <MaterialCommunityIcons name="camera" size={17} color="#00E5FF" />
+                            <Text style={{ fontSize: 12, fontWeight: '700', color: '#00E5FF' }}>Take Photo</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 10, backgroundColor: 'rgba(5,194,121,0.12)', borderWidth: 1, borderColor: 'rgba(5,194,121,0.3)' }}
+                        onPress={() => handlePickKycDocImage('back', 'gallery')}
+                        disabled={isUploadingKycBack}
+                      >
+                        <MaterialCommunityIcons name="image" size={17} color="#05c279" />
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: '#05c279' }}>Gallery</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+
+                {/* Submit Button */}
+                <TouchableOpacity
+                  style={{ width: '100%', paddingVertical: 14, borderRadius: 14, backgroundColor: '#05c279', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}
+                  activeOpacity={0.8}
+                  onPress={handleSubmitKycDocument}
+                  disabled={isSubmittingKyc}
+                >
+                  {isSubmittingKyc ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>Submit Government ID Proof</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{ width: '100%', paddingVertical: 12, borderRadius: 14, backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)', alignItems: 'center' }}
+                  activeOpacity={0.7}
+                  onPress={() => setKycModalVisible(false)}
+                >
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: activeTheme.textPrimary }}>Close</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ─── 5. Real Camera Live Selfie Verification Modal ──────────────────── */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          statusBarTranslucent={true}
+          visible={selfieModalVisible}
+          onRequestClose={() => setSelfieModalVisible(false)}
+        >
+          <View style={styles.bottomSheetRoot}>
+            <TouchableOpacity
+              style={styles.bottomSheetBackdrop}
+              activeOpacity={1}
+              onPress={() => setSelfieModalVisible(false)}
+            />
+            <View
+              style={[
+                styles.bottomSheetCard,
+                {
+                  backgroundColor: theme === 'dark' ? '#11141C' : '#FFFFFF',
+                  borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(15, 23, 42, 0.08)',
+                  paddingBottom: Math.max(insets.bottom, 16) + 16,
+                  width: '100%',
+                },
+              ]}
+            >
+              <View style={[styles.bottomSheetHandle, { backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.25)' : 'rgba(15, 23, 42, 0.2)' }]} />
+              <View style={{ alignItems: 'center', marginBottom: 14 }}>
+                <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: 'rgba(0,229,255,0.15)', borderWidth: 1, borderColor: '#00E5FF', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
+                  <MaterialCommunityIcons name="face-recognition" size={28} color="#00E5FF" />
+                </View>
+                <Text style={{ fontSize: 19, fontWeight: '800', color: activeTheme.textPrimary, textAlign: 'center' }}>
+                  Live Camera Selfie (20%)
+                </Text>
+                <Text style={{ fontSize: 12, color: activeTheme.textSecondary, textAlign: 'center', marginTop: 4, paddingHorizontal: 12 }}>
+                  Anti-fraud protection: Strictly requires real native device camera. Gallery uploads are blocked.
+                </Text>
+              </View>
+
+              {/* Selfie Preview or Capture Prompt */}
+              {localAvatarUrl || profileData?.avatar_url ? (
+                <View style={{ alignItems: 'center', marginVertical: 10 }}>
+                  <View style={{ width: 110, height: 110, borderRadius: 55, borderWidth: 3, borderColor: '#30D158', overflow: 'hidden', marginBottom: 8 }}>
+                    <Image source={{ uri: localAvatarUrl || profileData?.avatar_url || '' }} style={{ width: '100%', height: '100%' }} />
+                  </View>
+                  <View style={{ backgroundColor: 'rgba(48,209,88,0.15)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 8 }}>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#30D158' }}>Live Face Verified ✅</Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={{ padding: 14, borderRadius: 14, backgroundColor: activeTheme.tableHeaderBg, borderWidth: 1, borderColor: activeTheme.cardBorder, marginBottom: 14 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <MaterialCommunityIcons name="shield-check" size={16} color="#00E5FF" />
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: activeTheme.textPrimary }}>Anti-Spoofing Security Rules:</Text>
+                  </View>
+                  <Text style={{ fontSize: 11, color: activeTheme.textSecondary, lineHeight: 17 }}>
+                    • Face must be centered and clearly visible{'\n'}
+                    • No sunglasses, dark masks, or hats{'\n'}
+                    • Photo is captured instantly using real native front camera
+                  </Text>
+                </View>
+              )}
+
+              {/* Retake / Snap Button */}
+              <TouchableOpacity
+                style={{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 14, backgroundColor: '#05c279', marginBottom: 10 }}
+                activeOpacity={0.8}
+                onPress={async () => {
+                  setSelfieModalVisible(false);
+                  setTimeout(() => handleCaptureLiveSelfie(), 200);
+                }}
+                disabled={isCapturingSelfie}
+              >
+                {isCapturingSelfie ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="camera" size={18} color="#FFFFFF" />
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>
+                      {localAvatarUrl || profileData?.avatar_url ? 'Retake Live Selfie' : 'Snap Live Selfie Now'}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={{ width: '100%', paddingVertical: 12, borderRadius: 14, backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)', alignItems: 'center' }}
+                activeOpacity={0.7}
+                onPress={() => setSelfieModalVisible(false)}
+              >
+                <Text style={{ fontSize: 14, fontWeight: '700', color: activeTheme.textPrimary }}>Close</Text>
               </TouchableOpacity>
             </View>
           </View>
