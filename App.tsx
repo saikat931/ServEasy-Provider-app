@@ -3649,12 +3649,6 @@ function ProviderAppContent() {
             </TouchableOpacity>
           </View>
         </GlassCard>
-
-        {/* 7. Logout Button */}
-        <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
-          <MaterialCommunityIcons name="logout" size={18} color="#FF453A" />
-          <Text style={styles.logoutBtnText}>Log Out from Provider Portal</Text>
-        </TouchableOpacity>
       </View>
     );
   };
