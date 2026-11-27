@@ -73,6 +73,7 @@ import {
   updateProviderAvatarApi,
   submitProviderKycApi,
   submitProviderLiveSelfieApi,
+  toggleProviderDutyApi,
 } from './src/services/api';
 import { uploadProviderAvatarToScalePixel, uploadProviderDocToScalePixel, uploadProviderGalleryPhotoToScalePixel } from './src/services/scalePixelService';
 import { reverseGeocodeCoords, acquireDeviceLocation, getGoogleMapTileUrl, DoorstepAddressResult } from './src/services/locationHelper';
@@ -511,6 +512,7 @@ function ProviderAppContent() {
       isOnDutyRef.current = true;
       if (activeProviderId) {
         AsyncStorage.setItem(`serveasy_provider_duty_${activeProviderId}`, '1').catch(() => {});
+        toggleProviderDutyApi(activeProviderId, true).catch(() => {});
       }
       setLiveToast({
         id: Date.now(),
@@ -527,6 +529,7 @@ function ProviderAppContent() {
       isOnDutyRef.current = false;
       if (activeProviderId) {
         AsyncStorage.setItem(`serveasy_provider_duty_${activeProviderId}`, '0').catch(() => {});
+        toggleProviderDutyApi(activeProviderId, false).catch(() => {});
       }
       try {
         Vibration.cancel();
@@ -637,6 +640,17 @@ function ProviderAppContent() {
           fetchedProfile.avatar_url = effectiveAvatar;
         }
         setProfileData(fetchedProfile);
+
+        // Sync On/Off Duty state with serveasy-providers.is_active
+        if (fetchedProfile && fetchedProfile.is_active !== undefined && fetchedProfile.is_active !== null) {
+          const serverDuty = Boolean(Number(fetchedProfile.is_active));
+          setIsOnDuty(serverDuty);
+          isOnDutyRef.current = serverDuty;
+          if (activeProviderId) {
+            AsyncStorage.setItem(`serveasy_provider_duty_${activeProviderId}`, serverDuty ? '1' : '0').catch(() => {});
+          }
+        }
+
         setFormFullName(fetchedProfile.full_name || '');
         setFormCompanyName(fetchedProfile.company_name || '');
         setFormEmail(fetchedProfile.email || '');
@@ -2667,7 +2681,7 @@ function ProviderAppContent() {
     const displayName = profileData?.company_name || profileData?.full_name || providerUser?.first_name || 'Service Provider';
     const hasCompany = Boolean(profileData?.company_name && profileData.company_name.trim() !== '');
     const verStatus = (profileData?.verified_status || 'approved').toLowerCase();
-    const accountActive = (profileData?.status || 'ACTIVE') === 'ACTIVE';
+    const accountActive = isOnDuty;
 
     const formatSinceDate = (dateStr?: string) => {
       if (!dateStr) return 'Oct 26';
@@ -2986,7 +3000,7 @@ function ProviderAppContent() {
               <View style={styles.webStatCol}>
                 <View style={[styles.webStatusBadge, { backgroundColor: accountActive ? 'rgba(48,209,88,0.18)' : 'rgba(255,69,58,0.18)' }]}>
                   <Text style={[styles.webStatusBadgeText, { color: accountActive ? '#30D158' : '#FF453A' }]}>
-                    {accountActive ? 'ACTIVE' : 'SUSPENDED'}
+                    {accountActive ? 'ON DUTY' : 'OFF DUTY'}
                   </Text>
                 </View>
                 <Text style={[styles.webStatLabel, { color: activeTheme.textSecondary }]}>STATUS</Text>
@@ -3389,7 +3403,7 @@ function ProviderAppContent() {
                 <Text style={[styles.webStatusItemLabel, { color: activeTheme.textPrimary }]}>Account Status:</Text>
                 <View style={[styles.webBadgeGreenPill, { backgroundColor: accountActive ? 'rgba(5, 194, 121, 0.15)' : 'rgba(255, 69, 58, 0.15)' }]}>
                   <Text style={[styles.webBadgeGreenPillText, { color: accountActive ? '#05c279' : '#FF453A' }]}>
-                    {accountActive ? 'ACTIVE' : 'SUSPENDED'}
+                    {accountActive ? 'ON DUTY (ACTIVE)' : 'OFF DUTY (OFFLINE)'}
                   </Text>
                 </View>
               </View>

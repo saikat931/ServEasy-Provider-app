@@ -180,6 +180,8 @@ export interface ProviderProfileData {
   longitude?: string;
   service_range_km: number;
   verified_status: string;
+  is_active?: number;
+  is_on_duty?: boolean;
   status: 'ACTIVE' | 'SUSPENDED';
   created_at: string;
   progress: ProfileProgress;
@@ -727,6 +729,44 @@ export async function fetchProviderProfileApi(providerId: number): Promise<Provi
     console.log('[Provider API] Error fetching provider profile:', e);
   }
   return null;
+}
+
+/**
+ * Toggle or Set Provider On/Off Duty Status (serveasy-providers.is_active)
+ */
+export async function toggleProviderDutyApi(
+  providerId: number,
+  isOnDuty: boolean
+): Promise<{ success: boolean; is_active?: number; is_on_duty?: boolean; message?: string }> {
+  try {
+    const res = await fetch(`${API_BASE_URL}/dealer-auth-api.php`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-Provider-Id': String(providerId),
+      },
+      body: JSON.stringify({
+        action: 'set_duty_status',
+        provider_id: providerId,
+        is_active: isOnDuty ? 1 : 0,
+        is_on_duty: isOnDuty,
+      }),
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      return {
+        success: json.status === 'success',
+        is_active: json.is_active,
+        is_on_duty: json.is_on_duty,
+        message: json.message,
+      };
+    }
+  } catch (err: any) {
+    console.warn('[Duty Toggle] Error updating duty status in serveasy-providers:', err);
+  }
+  return { success: false };
 }
 
 /**
