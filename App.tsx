@@ -2425,7 +2425,11 @@ function ProviderAppContent() {
         {/* Greeting, Live Clock & Local Weather Hero Card */}
         <GreetingWeatherCard
           theme={theme}
-          providerName={profileData?.full_name || providerUser?.first_name || profileData?.company_name}
+          providerName={
+            profileData?.full_name ||
+            [providerUser?.first_name, providerUser?.last_name].filter(Boolean).join(' ') ||
+            profileData?.company_name
+          }
           latitude={liveGpsCoords?.latitude ?? savedLat}
           longitude={liveGpsCoords?.longitude ?? savedLng}
           addressHint={formAddress || profileData?.location_address}

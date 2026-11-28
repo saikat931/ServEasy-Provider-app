@@ -33,10 +33,25 @@ function formatClock(now: Date): { timeText: string; secondsText: string; period
   };
 }
 
-function extractFirstName(fullName?: string): string {
+function extractShortName(fullName?: string): string {
   if (!fullName) return '';
-  const first = fullName.trim().split(/\s+/)[0];
-  return first || '';
+  const cleaned = fullName.replace(/^(mr\.|mrs\.|ms\.|dr\.)\s+/i, '').trim();
+  const parts = cleaned.split(/\s+/).filter((p) => p.length > 0 && /^[A-Za-z0-9]/.test(p));
+
+  if (parts.length >= 2) {
+    // Short name like first letters of full name (e.g. "Rajsekhar Jana" -> "RJ")
+    return parts.map((p) => p[0].toUpperCase()).join('');
+  }
+
+  if (parts.length === 1) {
+    const single = parts[0];
+    if (single.length > 4) {
+      return single.substring(0, 3);
+    }
+    return single;
+  }
+
+  return '';
 }
 
 /**
@@ -79,8 +94,8 @@ export const GreetingWeatherCard: React.FC<GreetingWeatherCardProps> = ({
 
   const greetingMeta = getTimeOfDayGreeting(now);
   const clock = formatClock(now);
-  const firstName = extractFirstName(providerName);
-  const fullGreeting = firstName ? `${greetingMeta.greeting}, ${firstName}!` : `${greetingMeta.greeting}!`;
+  const shortName = extractShortName(providerName);
+  const fullGreeting = shortName ? `${greetingMeta.greeting}, ${shortName}!` : `${greetingMeta.greeting}!`;
 
   const isDark = theme === 'dark';
   const textPrimary = isDark ? '#FFFFFF' : '#0F172A';
