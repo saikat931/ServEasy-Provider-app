@@ -41,6 +41,7 @@ import { ProudMadeInIndiaFooter } from './src/components/ProudMadeInIndiaFooter'
 import { EarningsAnalyseSection } from './src/components/EarningsAnalyseSection';
 import { PromoBannerCarousel } from './src/components/PromoBannerCarousel';
 import { WhyPartnerCarousel } from './src/components/WhyPartnerCarousel';
+import { IdApprovalModal } from './src/components/IdApprovalModal';
 import { ProviderNotificationsSection } from './src/components/ProviderNotificationsSection';
 import { getServiceIcon } from './src/services/serviceIcons';
 import {
@@ -368,6 +369,7 @@ function ProviderAppContent() {
   const [emailModalVisible, setEmailModalVisible] = useState(false);
   const [addressModalVisible, setAddressModalVisible] = useState(false);
   const [kycModalVisible, setKycModalVisible] = useState(false);
+  const [idApprovalModalVisible, setIdApprovalModalVisible] = useState(false);
   const [kycIdType, setKycIdType] = useState<'aadhaar' | 'pan' | 'voter_id' | 'driving_license' | 'passport'>('aadhaar');
   const [kycIdNumber, setKycIdNumber] = useState('');
   const [kycFrontImage, setKycFrontImage] = useState<string | null>(null);
@@ -528,26 +530,7 @@ function ProviderAppContent() {
 
     // SECURITY & COMPLIANCE GATE: Prevent going Online if ID is not approved by admin / superadmin
     if (!isProviderIdApproved()) {
-      const progress = profileData?.progress;
-      const idStatus = (progress?.id_status || profileData?.verified_status || 'pending').toLowerCase();
-
-      let statusDesc = 'You cannot go Online until your Government ID & Verification have been reviewed and approved by an Admin or Superadmin.';
-      if (idStatus === 'under_review' || idStatus === 'pending') {
-        statusDesc = 'Your Government ID verification is currently Under Review by the admin team. You will be able to go Online as soon as it is approved.';
-      } else if (idStatus === 'rejected') {
-        statusDesc = 'Your ID verification was rejected by Admin. Please re-submit your ID documents to be reviewed and approved.';
-      } else {
-        statusDesc = 'Please complete your ID verification and submit official proof. Once approved by Admin or Superadmin, you can go Online.';
-      }
-
-      showCustomAlert(
-        'ID Approval Required 🛡️',
-        statusDesc,
-        [
-          { text: 'Submit / View ID 🪪', onPress: () => setActiveSection('verification') },
-          { text: 'Cancel', style: 'cancel' },
-        ]
-      );
+      setIdApprovalModalVisible(true);
       return;
     }
 
@@ -7812,6 +7795,23 @@ function ProviderAppContent() {
             </View>
           </View>
         </Modal>
+
+        {/* ─── Premium ID Approval Required Modal (Pretty Gate for Going Online) ─── */}
+        <IdApprovalModal
+          visible={idApprovalModalVisible}
+          onClose={() => setIdApprovalModalVisible(false)}
+          status={profileData?.progress?.id_status || profileData?.verified_status || 'pending'}
+          onOpenVerification={() => {
+            setIdApprovalModalVisible(false);
+            const idStatus = (profileData?.progress?.id_status || profileData?.verified_status || '').toLowerCase();
+            if (idStatus === 'under_review' || idStatus === 'approved') {
+              setActiveSection('verification');
+            } else {
+              setKycModalVisible(true);
+            }
+          }}
+          theme={theme}
+        />
 
         {/* ─── 4. Government ID Proof Submission Modal ────────────────────────── */}
         <Modal
