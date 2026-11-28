@@ -4024,7 +4024,6 @@ function ProviderAppContent() {
         {/* Greeting, Live Digital Clock & Local Weather Hero Card */}
         <GreetingWeatherCard
           theme={theme}
-          providerName="Partner"
           latitude={liveGpsCoords?.latitude ?? savedLat}
           longitude={liveGpsCoords?.longitude ?? savedLng}
           addressHint={formAddress || profileData?.location_address}
