@@ -7,11 +7,13 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   Dimensions,
+  ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export interface IdApprovalModalProps {
   visible: boolean;
@@ -30,6 +32,7 @@ export function IdApprovalModal({
 }: IdApprovalModalProps) {
   if (!visible) return null;
 
+  const insets = useSafeAreaInsets();
   const isDark = theme === 'dark';
   const normStatus = (status || 'pending').toLowerCase();
   const isUnderReview = normStatus === 'under_review' || normStatus === 'review';
@@ -41,7 +44,7 @@ export function IdApprovalModal({
   let badgeColors: [string, string] = ['rgba(0, 132, 255, 0.25)', 'rgba(0, 98, 204, 0.15)'];
   let badgeTextColor = '#38BDF8';
   let badgeIcon: React.ComponentProps<typeof MaterialCommunityIcons>['name'] = 'shield-lock';
-  let iconGlowColor = 'rgba(0, 132, 255, 0.18)';
+  let iconGlowColor = 'rgba(0, 132, 255, 0.16)';
   let iconBorderColor = 'rgba(0, 132, 255, 0.35)';
   let iconGradColors: [string, string] = ['#0084FF', '#0055B3'];
   let title = 'ID Approval Required 🛡️';
@@ -56,12 +59,12 @@ export function IdApprovalModal({
     badgeColors = ['rgba(245, 158, 11, 0.25)', 'rgba(217, 119, 6, 0.15)'];
     badgeTextColor = '#F59E0B';
     badgeIcon = 'clock-fast';
-    iconGlowColor = 'rgba(245, 158, 11, 0.2)';
+    iconGlowColor = 'rgba(245, 158, 11, 0.18)';
     iconBorderColor = 'rgba(245, 158, 11, 0.4)';
     iconGradColors = ['#F59E0B', '#D97706'];
     title = 'Verification Under Review ⏳';
     description =
-      'Your Government ID & documents have been submitted and are currently being reviewed by the admin team. You will be able to go Online as soon as approval is granted.';
+      'Your Government ID & documents have been submitted and are currently being reviewed by the admin team. You can go Online once approved.';
     primaryCtaText = 'Check Verification Status 🔍';
     primaryCtaColors = ['#F59E0B', '#D97706'];
   } else if (isRejected) {
@@ -70,7 +73,7 @@ export function IdApprovalModal({
     badgeColors = ['rgba(239, 68, 68, 0.25)', 'rgba(220, 38, 38, 0.15)'];
     badgeTextColor = '#EF4444';
     badgeIcon = 'alert-circle';
-    iconGlowColor = 'rgba(239, 68, 68, 0.2)';
+    iconGlowColor = 'rgba(239, 68, 68, 0.18)';
     iconBorderColor = 'rgba(239, 68, 68, 0.4)';
     iconGradColors = ['#EF4444', '#DC2626'];
     title = 'ID Verification Rejected ⚠️';
@@ -87,6 +90,12 @@ export function IdApprovalModal({
   const rowBg = isDark ? 'rgba(255, 255, 255, 0.04)' : '#F8FAFC';
   const rowBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0';
 
+  // Compute maximum card height safely within screen bounds & safe area
+  const maxCardHeight = Math.min(
+    SCREEN_HEIGHT - Math.max(insets.top, 16) - Math.max(insets.bottom, 16) - 16,
+    580
+  );
+
   return (
     <Modal
       visible={visible}
@@ -95,189 +104,218 @@ export function IdApprovalModal({
       statusBarTranslucent={true}
       onRequestClose={onClose}
     >
-      <View style={styles.backdrop}>
+      <View
+        style={[
+          styles.backdrop,
+          {
+            paddingTop: Math.max(insets.top, 16) + 4,
+            paddingBottom: Math.max(insets.bottom, 16) + 4,
+          },
+        ]}
+      >
         {/* Tap outside to dismiss */}
         <TouchableWithoutFeedback onPress={onClose}>
           <View style={StyleSheet.absoluteFill} />
         </TouchableWithoutFeedback>
 
-        {/* Modal Card */}
+        {/* Modal Card - Constrained to Safe Area */}
         <View
           style={[
             styles.card,
             {
               backgroundColor: cardBg,
               borderColor: cardBorder,
+              maxHeight: maxCardHeight,
             },
           ]}
         >
-          {/* Top Drag Indicator */}
+          {/* Top Bar with Dismiss Pill & Close Button (Always visible at top) */}
           <View style={styles.topBar}>
             <View style={[styles.topBarPill, { backgroundColor: isDark ? 'rgba(255,255,255,0.2)' : '#CBD5E1' }]} />
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={onClose}
+              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
               style={[styles.closeIconBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F1F5F9' }]}
             >
-              <MaterialCommunityIcons name="close" size={18} color={isDark ? '#9CA3AF' : '#64748B'} />
+              <MaterialCommunityIcons name="close" size={16} color={isDark ? '#9CA3AF' : '#64748B'} />
             </TouchableOpacity>
           </View>
 
-          {/* Hero Visual: Glowing Concentric Rings with Shield */}
-          <View style={styles.heroWrap}>
-            <View style={[styles.glowRingOuter, { backgroundColor: iconGlowColor }]}>
-              <View style={[styles.glowRingMiddle, { borderColor: iconBorderColor }]}>
-                <LinearGradient
-                  colors={iconGradColors}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.heroCircle}
-                >
-                  <MaterialCommunityIcons name={heroIcon} size={36} color="#FFFFFF" />
-                </LinearGradient>
+          {/* Scrollable Body: Ensures small phones never overflow or cross safe area */}
+          <ScrollView
+            style={styles.scrollBody}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            {/* Hero Visual: Glowing Concentric Rings with Shield */}
+            <View style={styles.heroWrap}>
+              <View style={[styles.glowRingOuter, { backgroundColor: iconGlowColor }]}>
+                <View style={[styles.glowRingMiddle, { borderColor: iconBorderColor }]}>
+                  <LinearGradient
+                    colors={iconGradColors}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.heroCircle}
+                  >
+                    <MaterialCommunityIcons name={heroIcon} size={28} color="#FFFFFF" />
+                  </LinearGradient>
+                </View>
               </View>
+
+              {/* Status Pill Badge */}
+              <LinearGradient
+                colors={badgeColors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.badgePill, { borderColor: badgeTextColor }]}
+              >
+                <MaterialCommunityIcons
+                  name={badgeIcon}
+                  size={12}
+                  color={badgeTextColor}
+                  style={{ marginRight: 4 }}
+                />
+                <Text style={[styles.badgeText, { color: badgeTextColor }]}>
+                  {badgeLabel}
+                </Text>
+              </LinearGradient>
             </View>
 
-            {/* Status Pill Badge */}
-            <LinearGradient
-              colors={badgeColors}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={[styles.badgePill, { borderColor: badgeTextColor }]}
-            >
-              <MaterialCommunityIcons
-                name={badgeIcon}
-                size={13}
-                color={badgeTextColor}
-                style={{ marginRight: 5 }}
-              />
-              <Text style={[styles.badgeText, { color: badgeTextColor }]}>
-                {badgeLabel}
-              </Text>
-            </LinearGradient>
-          </View>
+            {/* Title & Description */}
+            <Text style={[styles.title, { color: titleColor }]}>{title}</Text>
+            <Text style={[styles.description, { color: descColor }]}>{description}</Text>
 
-          {/* Title & Description */}
-          <Text style={[styles.title, { color: titleColor }]}>{title}</Text>
-          <Text style={[styles.description, { color: descColor }]}>{description}</Text>
-
-          {/* Verification Steps Breakdown */}
-          <View style={[styles.stepsCard, { backgroundColor: rowBg, borderColor: rowBorder }]}>
-            {/* Step 1 */}
-            <View style={styles.stepRow}>
-              <View style={[styles.stepIconBox, { backgroundColor: isUnderReview ? 'rgba(245, 158, 11, 0.15)' : isRejected ? 'rgba(239, 68, 68, 0.15)' : 'rgba(0, 132, 255, 0.15)' }]}>
-                <MaterialCommunityIcons
-                  name="card-account-details-outline"
-                  size={18}
-                  color={isUnderReview ? '#F59E0B' : isRejected ? '#EF4444' : '#0084FF'}
-                />
-              </View>
-              <View style={styles.stepContent}>
-                <Text style={[styles.stepTitle, { color: titleColor }]}>
-                  Government ID Proof
-                </Text>
-                <Text style={[styles.stepSubtitle, { color: descColor }]}>
-                  Aadhaar, Voter ID, or Driving License
-                </Text>
-              </View>
-              <View
-                style={[
-                  styles.statusTag,
-                  {
-                    backgroundColor: isUnderReview
-                      ? 'rgba(245, 158, 11, 0.15)'
-                      : isRejected
-                      ? 'rgba(239, 68, 68, 0.15)'
-                      : 'rgba(255, 255, 255, 0.08)',
-                  },
-                ]}
-              >
-                <Text
+            {/* Verification Steps Breakdown */}
+            <View style={[styles.stepsCard, { backgroundColor: rowBg, borderColor: rowBorder }]}>
+              {/* Step 1 */}
+              <View style={styles.stepRow}>
+                <View
                   style={[
-                    styles.statusTagText,
+                    styles.stepIconBox,
                     {
-                      color: isUnderReview
-                        ? '#F59E0B'
+                      backgroundColor: isUnderReview
+                        ? 'rgba(245, 158, 11, 0.15)'
                         : isRejected
-                        ? '#EF4444'
-                        : isDark
-                        ? '#CBD5E1'
-                        : '#64748B',
+                        ? 'rgba(239, 68, 68, 0.15)'
+                        : 'rgba(0, 132, 255, 0.15)',
                     },
                   ]}
                 >
-                  {isUnderReview ? 'Submitted' : isRejected ? 'Rejected' : 'Required'}
-                </Text>
+                  <MaterialCommunityIcons
+                    name="card-account-details-outline"
+                    size={16}
+                    color={isUnderReview ? '#F59E0B' : isRejected ? '#EF4444' : '#0084FF'}
+                  />
+                </View>
+                <View style={styles.stepContent}>
+                  <Text style={[styles.stepTitle, { color: titleColor }]}>
+                    Government ID Proof
+                  </Text>
+                  <Text style={[styles.stepSubtitle, { color: descColor }]}>
+                    Aadhaar, Voter ID, or DL
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.statusTag,
+                    {
+                      backgroundColor: isUnderReview
+                        ? 'rgba(245, 158, 11, 0.15)'
+                        : isRejected
+                        ? 'rgba(239, 68, 68, 0.15)'
+                        : 'rgba(255, 255, 255, 0.08)',
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusTagText,
+                      {
+                        color: isUnderReview
+                          ? '#F59E0B'
+                          : isRejected
+                          ? '#EF4444'
+                          : isDark
+                          ? '#CBD5E1'
+                          : '#64748B',
+                      },
+                    ]}
+                  >
+                    {isUnderReview ? 'Submitted' : isRejected ? 'Rejected' : 'Required'}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={[styles.divider, { backgroundColor: rowBorder }]} />
+
+              {/* Step 2 */}
+              <View style={styles.stepRow}>
+                <View style={[styles.stepIconBox, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                  <MaterialCommunityIcons name="face-recognition" size={16} color="#10B981" />
+                </View>
+                <View style={styles.stepContent}>
+                  <Text style={[styles.stepTitle, { color: titleColor }]}>
+                    Live Facial Verification
+                  </Text>
+                  <Text style={[styles.stepSubtitle, { color: descColor }]}>
+                    Selfie match with photo ID
+                  </Text>
+                </View>
+                <View style={[styles.statusTag, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                  <Text style={[styles.statusTagText, { color: '#10B981' }]}>
+                    Quick Check
+                  </Text>
+                </View>
+              </View>
+
+              <View style={[styles.divider, { backgroundColor: rowBorder }]} />
+
+              {/* Step 3 */}
+              <View style={styles.stepRow}>
+                <View style={[styles.stepIconBox, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
+                  <MaterialCommunityIcons name="shield-check" size={16} color="#A855F7" />
+                </View>
+                <View style={styles.stepContent}>
+                  <Text style={[styles.stepTitle, { color: titleColor }]}>
+                    Admin Verification & Duty
+                  </Text>
+                  <Text style={[styles.stepSubtitle, { color: descColor }]}>
+                    Auto Online activation upon approval
+                  </Text>
+                </View>
+                <View style={[styles.statusTag, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
+                  <Text style={[styles.statusTagText, { color: '#A855F7' }]}>
+                    15-30 Min
+                  </Text>
+                </View>
               </View>
             </View>
 
-            <View style={[styles.divider, { backgroundColor: rowBorder }]} />
-
-            {/* Step 2 */}
-            <View style={styles.stepRow}>
-              <View style={[styles.stepIconBox, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-                <MaterialCommunityIcons name="face-recognition" size={18} color="#10B981" />
-              </View>
-              <View style={styles.stepContent}>
-                <Text style={[styles.stepTitle, { color: titleColor }]}>
-                  Live Facial Verification
-                </Text>
-                <Text style={[styles.stepSubtitle, { color: descColor }]}>
-                  Selfie match with government photo ID
-                </Text>
-              </View>
-              <View style={[styles.statusTag, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-                <Text style={[styles.statusTagText, { color: '#10B981' }]}>
-                  Quick Check
-                </Text>
-              </View>
+            {/* Trust Highlights Strip */}
+            <View
+              style={[
+                styles.trustBox,
+                {
+                  backgroundColor: isDark ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.06)',
+                  borderColor: isDark ? 'rgba(16, 185, 129, 0.25)' : 'rgba(16, 185, 129, 0.2)',
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="check-decagram"
+                size={16}
+                color="#10B981"
+                style={{ marginRight: 6, marginTop: 1 }}
+              />
+              <Text style={[styles.trustText, { color: isDark ? '#A7F3D0' : '#065F46' }]}>
+                Verified providers earn <Text style={{ fontWeight: '700' }}>3× more bookings</Text> and receive instant 100% direct payouts.
+              </Text>
             </View>
+          </ScrollView>
 
-            <View style={[styles.divider, { backgroundColor: rowBorder }]} />
-
-            {/* Step 3 */}
-            <View style={styles.stepRow}>
-              <View style={[styles.stepIconBox, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
-                <MaterialCommunityIcons name="shield-check" size={18} color="#A855F7" />
-              </View>
-              <View style={styles.stepContent}>
-                <Text style={[styles.stepTitle, { color: titleColor }]}>
-                  Admin Verification & Duty
-                </Text>
-                <Text style={[styles.stepSubtitle, { color: descColor }]}>
-                  Instant Online switch activation upon approval
-                </Text>
-              </View>
-              <View style={[styles.statusTag, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
-                <Text style={[styles.statusTagText, { color: '#A855F7' }]}>
-                  15-30 Min
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Trust Highlights Strip */}
-          <View
-            style={[
-              styles.trustBox,
-              {
-                backgroundColor: isDark ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.06)',
-                borderColor: isDark ? 'rgba(16, 185, 129, 0.25)' : 'rgba(16, 185, 129, 0.2)',
-              },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="check-decagram"
-              size={18}
-              color="#10B981"
-              style={{ marginRight: 8, marginTop: 1 }}
-            />
-            <Text style={[styles.trustText, { color: isDark ? '#A7F3D0' : '#065F46' }]}>
-              Verified providers earn <Text style={{ fontWeight: '700' }}>3× more bookings</Text> and receive instant 100% direct bank / UPI payouts.
-            </Text>
-          </View>
-
-          {/* Action Buttons */}
+          {/* Action Buttons (Pinned to bottom of card for easy thumb reach) */}
           <View style={styles.actionsWrap}>
             <TouchableOpacity
               activeOpacity={0.85}
@@ -295,9 +333,9 @@ export function IdApprovalModal({
               >
                 <MaterialCommunityIcons
                   name={isUnderReview ? 'magnify' : 'arrow-right-circle'}
-                  size={20}
+                  size={18}
                   color="#FFFFFF"
-                  style={{ marginRight: 8 }}
+                  style={{ marginRight: 6 }}
                 />
                 <Text style={styles.primaryBtnText}>{primaryCtaText}</Text>
               </LinearGradient>
@@ -331,200 +369,208 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.78)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 30,
+    paddingHorizontal: 16,
   },
   card: {
     width: '100%',
-    maxWidth: 420,
-    borderRadius: 24,
+    maxWidth: 400,
+    borderRadius: 22,
     borderWidth: 1.5,
-    paddingHorizontal: 22,
-    paddingTop: 16,
-    paddingBottom: 22,
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 16,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 12 },
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.45,
-    shadowRadius: 24,
+    shadowRadius: 20,
     elevation: 20,
   },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 8,
     position: 'relative',
+    height: 24,
   },
   topBarPill: {
-    width: 44,
-    height: 4,
+    width: 38,
+    height: 3.5,
     borderRadius: 2,
   },
   closeIconBtn: {
     position: 'absolute',
-    right: 0,
-    top: -4,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    right: -4,
+    top: -2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  scrollBody: {
+    flexGrow: 0,
+    flexShrink: 1,
+  },
+  scrollContent: {
+    paddingBottom: 6,
   },
   heroWrap: {
     alignItems: 'center',
-    marginBottom: 14,
-  },
-  glowRingOuter: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginBottom: 10,
   },
-  glowRingMiddle: {
+  glowRingOuter: {
     width: 72,
     height: 72,
     borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  glowRingMiddle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
   },
   heroCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   badgePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 4.5,
-    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 3.5,
+    borderRadius: 12,
     borderWidth: 1,
   },
   badgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 5,
     letterSpacing: -0.3,
   },
   description: {
-    fontSize: 13,
-    lineHeight: 18.5,
+    fontSize: 12,
+    lineHeight: 16.5,
     textAlign: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 6,
+    marginBottom: 12,
+    paddingHorizontal: 4,
   },
   stepsCard: {
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    marginBottom: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 10,
   },
   stepRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 7,
+    paddingVertical: 5,
   },
   stepIconBox: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 30,
+    height: 30,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 10,
+    marginRight: 9,
   },
   stepContent: {
     flex: 1,
   },
   stepTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     marginBottom: 1,
   },
   stepSubtitle: {
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: 10.5,
+    lineHeight: 13,
   },
   statusTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 6,
   },
   statusTagText: {
-    fontSize: 10.5,
+    fontSize: 10,
     fontWeight: '700',
   },
   divider: {
     height: 1,
     width: '100%',
-    marginVertical: 2,
+    marginVertical: 1,
   },
   trustBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
     borderWidth: 1,
-    marginBottom: 16,
+    marginBottom: 10,
   },
   trustText: {
     flex: 1,
-    fontSize: 11.5,
-    lineHeight: 16,
+    fontSize: 11,
+    lineHeight: 15,
   },
   actionsWrap: {
-    gap: 8,
+    gap: 7,
+    paddingTop: 4,
   },
   primaryBtnTouch: {
     width: '100%',
-    borderRadius: 14,
+    borderRadius: 12,
     overflow: 'hidden',
     shadowColor: '#0084FF',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
   },
   primaryBtnGrad: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 13,
-    paddingHorizontal: 16,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
   },
   primaryBtnText: {
     color: '#FFFFFF',
-    fontSize: 14.5,
+    fontSize: 13.5,
     fontWeight: '800',
     letterSpacing: 0.2,
   },
   cancelBtn: {
     width: '100%',
-    paddingVertical: 11,
-    borderRadius: 14,
+    paddingVertical: 9,
+    borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cancelBtnText: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
 });
