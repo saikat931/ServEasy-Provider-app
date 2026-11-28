@@ -6,14 +6,14 @@ import {
   StyleSheet,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  Dimensions,
+  useWindowDimensions,
   ScrollView,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export interface IdApprovalModalProps {
   visible: boolean;
@@ -33,6 +33,7 @@ export function IdApprovalModal({
   if (!visible) return null;
 
   const insets = useSafeAreaInsets();
+  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const isDark = theme === 'dark';
   const normStatus = (status || 'pending').toLowerCase();
   const isUnderReview = normStatus === 'under_review' || normStatus === 'review';
@@ -90,11 +91,12 @@ export function IdApprovalModal({
   const rowBg = isDark ? 'rgba(255, 255, 255, 0.04)' : '#F8FAFC';
   const rowBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : '#E2E8F0';
 
-  // Compute maximum card height safely within screen bounds & safe area
-  const maxCardHeight = Math.min(
-    SCREEN_HEIGHT - Math.max(insets.top, 16) - Math.max(insets.bottom, 16) - 16,
-    580
-  );
+  // Guaranteed safe top & bottom bounds on all devices (including small phones)
+  const androidBar = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
+  const safeTop = Math.max(insets.top || 0, androidBar, 24);
+  const safeBottom = Math.max(insets.bottom || 0, 20);
+  const availableHeight = screenHeight - safeTop - safeBottom - 16;
+  const maxCardHeight = Math.min(availableHeight, 520);
 
   return (
     <Modal
@@ -108,8 +110,8 @@ export function IdApprovalModal({
         style={[
           styles.backdrop,
           {
-            paddingTop: Math.max(insets.top, 16) + 4,
-            paddingBottom: Math.max(insets.bottom, 16) + 4,
+            paddingTop: safeTop + 8,
+            paddingBottom: safeBottom + 8,
           },
         ]}
       >
@@ -159,7 +161,7 @@ export function IdApprovalModal({
                     end={{ x: 1, y: 1 }}
                     style={styles.heroCircle}
                   >
-                    <MaterialCommunityIcons name={heroIcon} size={28} color="#FFFFFF" />
+                    <MaterialCommunityIcons name={heroIcon} size={24} color="#FFFFFF" />
                   </LinearGradient>
                 </View>
               </View>
@@ -252,7 +254,7 @@ export function IdApprovalModal({
 
               {/* Step 2 */}
               <View style={styles.stepRow}>
-                <View style={[styles.stepIconBox, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                <View style={[styles.stepIconBox, { backgroundColor: 'rgba(160, 185, 129, 0.15)' }]}>
                   <MaterialCommunityIcons name="face-recognition" size={16} color="#10B981" />
                 </View>
                 <View style={styles.stepContent}>
@@ -333,7 +335,7 @@ export function IdApprovalModal({
               >
                 <MaterialCommunityIcons
                   name={isUnderReview ? 'magnify' : 'arrow-right-circle'}
-                  size={18}
+                  size={17}
                   color="#FFFFFF"
                   style={{ marginRight: 6 }}
                 />
@@ -369,32 +371,33 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.78)',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 14,
   },
   card: {
     width: '100%',
-    maxWidth: 400,
-    borderRadius: 22,
+    maxWidth: 390,
+    borderRadius: 20,
     borderWidth: 1.5,
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 14,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.45,
     shadowRadius: 20,
     elevation: 20,
+    overflow: 'hidden',
   },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
     position: 'relative',
-    height: 24,
+    height: 22,
   },
   topBarPill: {
-    width: 38,
+    width: 36,
     height: 3.5,
     borderRadius: 2,
   },
@@ -402,9 +405,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: -4,
     top: -2,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -413,106 +416,106 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   scrollContent: {
-    paddingBottom: 6,
+    paddingBottom: 4,
   },
   heroWrap: {
     alignItems: 'center',
-    marginBottom: 10,
-  },
-  glowRingOuter: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
     marginBottom: 8,
   },
+  glowRingOuter: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
   glowRingMiddle: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
   },
   heroCircle: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowRadius: 6,
+    elevation: 5,
   },
   badgePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 3.5,
-    borderRadius: 12,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 10,
     borderWidth: 1,
   },
   badgeText: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
   title: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     textAlign: 'center',
-    marginBottom: 5,
+    marginBottom: 4,
     letterSpacing: -0.3,
   },
   description: {
-    fontSize: 12,
-    lineHeight: 16.5,
+    fontSize: 11.5,
+    lineHeight: 15.5,
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
     paddingHorizontal: 4,
   },
   stepsCard: {
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginBottom: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    marginBottom: 8,
   },
   stepRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 5,
+    paddingVertical: 4,
   },
   stepIconBox: {
-    width: 30,
-    height: 30,
-    borderRadius: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 7,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 9,
+    marginRight: 8,
   },
   stepContent: {
     flex: 1,
   },
   stepTitle: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '700',
     marginBottom: 1,
   },
   stepSubtitle: {
-    fontSize: 10.5,
-    lineHeight: 13,
+    fontSize: 10,
+    lineHeight: 12.5,
   },
   statusTag: {
-    paddingHorizontal: 7,
-    paddingVertical: 2.5,
-    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 5,
   },
   statusTagText: {
-    fontSize: 10,
+    fontSize: 9.5,
     fontWeight: '700',
   },
   divider: {
@@ -523,54 +526,55 @@ const styles = StyleSheet.create({
   trustBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 9,
     borderWidth: 1,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   trustText: {
     flex: 1,
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 10.5,
+    lineHeight: 14,
   },
   actionsWrap: {
-    gap: 7,
-    paddingTop: 4,
+    gap: 6,
+    paddingTop: 3,
   },
   primaryBtnTouch: {
     width: '100%',
-    borderRadius: 12,
+    borderRadius: 11,
     overflow: 'hidden',
     shadowColor: '#0084FF',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
-    shadowRadius: 6,
+    shadowRadius: 5,
     elevation: 3,
   },
   primaryBtnGrad: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 11,
-    paddingHorizontal: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
   },
   primaryBtnText: {
     color: '#FFFFFF',
-    fontSize: 13.5,
+    fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.2,
   },
   cancelBtn: {
     width: '100%',
-    paddingVertical: 9,
-    borderRadius: 12,
+    paddingVertical: 8,
+    borderRadius: 11,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cancelBtnText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '600',
   },
 });
+

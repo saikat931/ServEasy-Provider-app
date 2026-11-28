@@ -170,10 +170,31 @@ export interface ProviderProfileData {
   email: string;
   phone: string;
   alt_phone_number?: string | null;
+  whatsapp_number?: string | null;
+  gender?: string | null;
+  dob?: string | null;
+  age?: number | null;
   company_name: string;
   has_company: boolean;
   location_address: string;
   other_address?: string | null;
+  permanent_address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  languages_spoken?: string | null;
+  about_me?: string | null;
+  years_of_experience?: number | null;
+  preferred_work_type?: string | null;
+  working_hours?: string | null;
+  available_from?: string | null;
+  expected_salary?: number | null;
+  hourly_rate?: number | null;
+  daily_rate?: number | null;
+  monthly_rate?: number | null;
+  service_description?: string | null;
+  profile_status?: string | null;
+  rejection_reason?: string | null;
   landmark: string;
   pincode: string;
   latitude?: string;
@@ -790,6 +811,25 @@ export async function saveProviderProfileApi(
     avatar_url?: string;
     alt_phone_number?: string;
     other_address?: string;
+    whatsapp_number?: string;
+    gender?: string;
+    dob?: string;
+    age?: number | string;
+    permanent_address?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    languages_spoken?: string;
+    about_me?: string;
+    years_of_experience?: number | string;
+    preferred_work_type?: string;
+    working_hours?: string;
+    available_from?: string;
+    expected_salary?: number | string;
+    hourly_rate?: number | string;
+    daily_rate?: number | string;
+    monthly_rate?: number | string;
+    service_description?: string;
   }
 ): Promise<{ success: boolean; message: string; progress?: ProfileProgress }> {
   try {

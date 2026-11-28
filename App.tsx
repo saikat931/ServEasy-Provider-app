@@ -364,6 +364,27 @@ function ProviderAppContent() {
   const [formAltPhone, setFormAltPhone] = useState('');
   const [formOtherAddress, setFormOtherAddress] = useState('');
 
+  // Comprehensive Provider Profile Schema Fields (matching provider_profiles.sql)
+  const [formGender, setFormGender] = useState('');
+  const [formDob, setFormDob] = useState('');
+  const [formAge, setFormAge] = useState('');
+  const [formWhatsapp, setFormWhatsapp] = useState('');
+  const [formPermanentAddress, setFormPermanentAddress] = useState('');
+  const [formCity, setFormCity] = useState('');
+  const [formState, setFormState] = useState('');
+  const [formCountry, setFormCountry] = useState('India');
+  const [formLanguages, setFormLanguages] = useState('');
+  const [formAboutMe, setFormAboutMe] = useState('');
+  const [formExperience, setFormExperience] = useState('0');
+  const [formWorkType, setFormWorkType] = useState('');
+  const [formWorkingHours, setFormWorkingHours] = useState('');
+  const [formAvailableFrom, setFormAvailableFrom] = useState('');
+  const [formHourlyRate, setFormHourlyRate] = useState('');
+  const [formDailyRate, setFormDailyRate] = useState('');
+  const [formMonthlyRate, setFormMonthlyRate] = useState('');
+  const [formExpectedSalary, setFormExpectedSalary] = useState('');
+  const [formServiceDesc, setFormServiceDesc] = useState('');
+
   // 5 KYC Verification Pillars & Modals States
   const [phoneModalVisible, setPhoneModalVisible] = useState(false);
   const [emailModalVisible, setEmailModalVisible] = useState(false);
@@ -693,11 +714,30 @@ function ProviderAppContent() {
         setFormEmail(fetchedProfile.email || '');
         setFormPhone(fetchedProfile.phone || '');
         setFormAltPhone(fetchedProfile.alt_phone_number || '');
+        setFormGender(fetchedProfile.gender || '');
+        setFormDob(fetchedProfile.dob || '');
+        setFormAge(fetchedProfile.age ? String(fetchedProfile.age) : '');
+        setFormWhatsapp(fetchedProfile.whatsapp_number || '');
         setFormAddress(fetchedProfile.location_address || '');
         setFormOtherAddress(fetchedProfile.other_address || '');
+        setFormPermanentAddress(fetchedProfile.permanent_address || '');
         setFormLandmark(fetchedProfile.landmark || '');
+        setFormCity(fetchedProfile.city || '');
+        setFormState(fetchedProfile.state || '');
+        setFormCountry(fetchedProfile.country || 'India');
         setFormPincode(fetchedProfile.pincode || '');
         setFormRangeKm(String(fetchedProfile.service_range_km || 10));
+        setFormLanguages(fetchedProfile.languages_spoken || '');
+        setFormAboutMe(fetchedProfile.about_me || '');
+        setFormExperience(fetchedProfile.years_of_experience ? String(fetchedProfile.years_of_experience) : '0');
+        setFormWorkType(fetchedProfile.preferred_work_type || '');
+        setFormWorkingHours(fetchedProfile.working_hours || '');
+        setFormAvailableFrom(fetchedProfile.available_from || '');
+        setFormHourlyRate(fetchedProfile.hourly_rate ? String(fetchedProfile.hourly_rate) : '');
+        setFormDailyRate(fetchedProfile.daily_rate ? String(fetchedProfile.daily_rate) : '');
+        setFormMonthlyRate(fetchedProfile.monthly_rate ? String(fetchedProfile.monthly_rate) : '');
+        setFormExpectedSalary(fetchedProfile.expected_salary ? String(fetchedProfile.expected_salary) : '');
+        setFormServiceDesc(fetchedProfile.service_description || '');
         if (fetchedProfile.latitude) setMapLatitude(parseFloat(fetchedProfile.latitude) || 22.6231);
         if (fetchedProfile.longitude) setMapLongitude(parseFloat(fetchedProfile.longitude) || 88.4348);
 
@@ -1493,13 +1533,32 @@ function ProviderAppContent() {
       const res = await saveProviderProfileApi(activeProviderId, {
         full_name: formFullName,
         company_name: formCompanyName,
+        gender: formGender,
+        dob: formDob,
+        age: formAge,
         email: formEmail,
         phone: formPhone,
         alt_phone_number: formAltPhone,
+        whatsapp_number: formWhatsapp,
         location_address: formAddress,
         other_address: formOtherAddress,
+        permanent_address: formPermanentAddress,
         landmark: formLandmark,
         pincode: formPincode,
+        city: formCity,
+        state: formState,
+        country: formCountry,
+        about_me: formAboutMe,
+        years_of_experience: formExperience,
+        languages_spoken: formLanguages,
+        preferred_work_type: formWorkType,
+        working_hours: formWorkingHours,
+        available_from: formAvailableFrom,
+        service_description: formServiceDesc,
+        hourly_rate: formHourlyRate,
+        daily_rate: formDailyRate,
+        monthly_rate: formMonthlyRate,
+        expected_salary: formExpectedSalary,
         service_range_km: parseFloat(formRangeKm) || 10,
         latitude: String(mapLatitude),
         longitude: String(mapLongitude),
@@ -3116,6 +3175,60 @@ function ProviderAppContent() {
               />
             </View>
 
+            {/* Gender Selector */}
+            <View style={styles.webFormRow}>
+              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Gender:</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                {['Male', 'Female', 'Other'].map((g) => (
+                  <TouchableOpacity
+                    key={g}
+                    onPress={() => setFormGender(g)}
+                    style={[
+                      styles.genderPillBtn,
+                      {
+                        backgroundColor: formGender === g ? '#05c279' : activeTheme.tableHeaderBg,
+                        borderColor: formGender === g ? '#05c279' : activeTheme.cardBorder,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.genderPillBtnText,
+                        { color: formGender === g ? '#FFFFFF' : activeTheme.textPrimary },
+                      ]}
+                    >
+                      {g}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Date of Birth & Age */}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={[styles.webFormRow, { flex: 1.4 }]}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Date of Birth:</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formDob}
+                  onChangeText={setFormDob}
+                  placeholder="YYYY-MM-DD"
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+              <View style={[styles.webFormRow, { flex: 0.8 }]}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Age:</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formAge}
+                  onChangeText={setFormAge}
+                  keyboardType="numeric"
+                  placeholder="Age"
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+            </View>
+
             {/* Company Name (Shown only if registered company) */}
             {hasCompany && (
               <View style={styles.webFormRow}>
@@ -3151,11 +3264,40 @@ function ProviderAppContent() {
 
             {/* Phone Number */}
             <View style={styles.webFormRow}>
-              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Phone Number:</Text>
+              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Primary Phone Number:</Text>
               <TextInput
                 style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
                 value={formPhone}
                 onChangeText={setFormPhone}
+                keyboardType="phone-pad"
+                placeholder="+91 XXXXX XXXXX"
+                placeholderTextColor={activeTheme.textSecondary}
+              />
+            </View>
+
+            {/* Alternate Phone Number */}
+            <View style={styles.webFormRow}>
+              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Alternate Phone Number:</Text>
+              <TextInput
+                style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                value={formAltPhone}
+                onChangeText={setFormAltPhone}
+                keyboardType="phone-pad"
+                placeholder="+91 XXXXX XXXXX"
+                placeholderTextColor={activeTheme.textSecondary}
+              />
+            </View>
+
+            {/* WhatsApp Number */}
+            <View style={styles.webFormRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <MaterialCommunityIcons name="whatsapp" size={15} color="#25D366" style={{ marginRight: 4 }} />
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>WhatsApp Number:</Text>
+              </View>
+              <TextInput
+                style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                value={formWhatsapp}
+                onChangeText={setFormWhatsapp}
                 keyboardType="phone-pad"
                 placeholder="+91 XXXXX XXXXX"
                 placeholderTextColor={activeTheme.textSecondary}
@@ -3377,6 +3519,209 @@ function ProviderAppContent() {
                   onChangeText={setFormRangeKm}
                   keyboardType="numeric"
                   placeholder="e.g. 10"
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+            </View>
+
+            {/* Permanent Address */}
+            <View style={styles.webFormRow}>
+              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Permanent Home Address:</Text>
+              <TextInput
+                style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                value={formPermanentAddress}
+                onChangeText={setFormPermanentAddress}
+                placeholder="Permanent home or registered address..."
+                placeholderTextColor={activeTheme.textSecondary}
+              />
+            </View>
+
+            {/* City, State & Country */}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={[styles.webFormRow, { flex: 1 }]}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>City:</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formCity}
+                  onChangeText={setFormCity}
+                  placeholder="e.g. Kolkata"
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+              <View style={[styles.webFormRow, { flex: 1 }]}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>State:</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formState}
+                  onChangeText={setFormState}
+                  placeholder="e.g. West Bengal"
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+              <View style={[styles.webFormRow, { flex: 0.8 }]}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Country:</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formCountry}
+                  onChangeText={setFormCountry}
+                  placeholder="India"
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+            </View>
+
+            {/* Professional & Experience Subheader */}
+            <View style={styles.webSubheaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <MaterialCommunityIcons name="briefcase-outline" size={16} color="#05c279" />
+                <Text style={styles.webSubheaderTitle}>Professional & Experience</Text>
+              </View>
+            </View>
+
+            {/* About Me / Bio */}
+            <View style={styles.webFormRow}>
+              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>About Me / Bio:</Text>
+              <TextInput
+                style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg, minHeight: 70, textAlignVertical: 'top' }]}
+                value={formAboutMe}
+                onChangeText={setFormAboutMe}
+                multiline={true}
+                numberOfLines={3}
+                placeholder="Describe your expertise, specialty, and background..."
+                placeholderTextColor={activeTheme.textSecondary}
+              />
+            </View>
+
+            {/* Experience & Languages */}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={[styles.webFormRow, { flex: 0.9 }]}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Experience (Years):</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formExperience}
+                  onChangeText={setFormExperience}
+                  keyboardType="numeric"
+                  placeholder="e.g. 5"
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+              <View style={[styles.webFormRow, { flex: 1.5 }]}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Languages Spoken:</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formLanguages}
+                  onChangeText={setFormLanguages}
+                  placeholder="e.g. Hindi, English, Bengali"
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+            </View>
+
+            {/* Preferred Work Type & Working Hours */}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={[styles.webFormRow, { flex: 1 }]}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Preferred Work Type:</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formWorkType}
+                  onChangeText={setFormWorkType}
+                  placeholder="e.g. Full-time / On-demand"
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+              <View style={[styles.webFormRow, { flex: 1 }]}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Working Hours:</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formWorkingHours}
+                  onChangeText={setFormWorkingHours}
+                  placeholder="e.g. 09:00 AM - 07:00 PM"
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+            </View>
+
+            {/* Available From Date */}
+            <View style={styles.webFormRow}>
+              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Available From:</Text>
+              <TextInput
+                style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                value={formAvailableFrom}
+                onChangeText={setFormAvailableFrom}
+                placeholder="YYYY-MM-DD"
+                placeholderTextColor={activeTheme.textSecondary}
+              />
+            </View>
+
+            {/* Service Description */}
+            <View style={styles.webFormRow}>
+              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Service Description:</Text>
+              <TextInput
+                style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg, minHeight: 60, textAlignVertical: 'top' }]}
+                value={formServiceDesc}
+                onChangeText={setFormServiceDesc}
+                multiline={true}
+                numberOfLines={2}
+                placeholder="Detailed description of services offered..."
+                placeholderTextColor={activeTheme.textSecondary}
+              />
+            </View>
+
+            {/* Rates & Salary Expectations Subheader */}
+            <View style={styles.webSubheaderRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <MaterialCommunityIcons name="currency-inr" size={16} color="#05c279" />
+                <Text style={styles.webSubheaderTitle}>Rates & Salary Expectations</Text>
+              </View>
+            </View>
+
+            {/* Hourly & Daily Rates */}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={[styles.webFormRow, { flex: 1 }]}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Hourly Rate (₹):</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formHourlyRate}
+                  onChangeText={setFormHourlyRate}
+                  keyboardType="numeric"
+                  placeholder="e.g. 299"
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+              <View style={[styles.webFormRow, { flex: 1 }]}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Daily Rate (₹):</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formDailyRate}
+                  onChangeText={setFormDailyRate}
+                  keyboardType="numeric"
+                  placeholder="e.g. 1499"
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+            </View>
+
+            {/* Monthly Rate & Expected Salary */}
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <View style={[styles.webFormRow, { flex: 1 }]}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Monthly Rate (₹):</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formMonthlyRate}
+                  onChangeText={setFormMonthlyRate}
+                  keyboardType="numeric"
+                  placeholder="e.g. 25000"
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+              <View style={[styles.webFormRow, { flex: 1 }]}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Expected Salary (₹):</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formExpectedSalary}
+                  onChangeText={setFormExpectedSalary}
+                  keyboardType="numeric"
+                  placeholder="e.g. 30000"
                   placeholderTextColor={activeTheme.textSecondary}
                 />
               </View>
@@ -10386,6 +10731,18 @@ const styles = StyleSheet.create({
   regBadgePillText: {
     color: '#05c279',
     fontSize: 10,
+    fontWeight: '700',
+  },
+  genderPillBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genderPillBtnText: {
+    fontSize: 13,
     fontWeight: '700',
   },
   webFormRow: {
