@@ -40,6 +40,7 @@ import { GreetingWeatherCard } from './src/components/GreetingWeatherCard';
 import { ProudMadeInIndiaFooter } from './src/components/ProudMadeInIndiaFooter';
 import { EarningsAnalyseSection } from './src/components/EarningsAnalyseSection';
 import { PromoBannerCarousel } from './src/components/PromoBannerCarousel';
+import { WhyPartnerCarousel } from './src/components/WhyPartnerCarousel';
 import { ProviderNotificationsSection } from './src/components/ProviderNotificationsSection';
 import { getServiceIcon } from './src/services/serviceIcons';
 import {
@@ -4009,44 +4010,8 @@ function ProviderAppContent() {
 
   // ─── Render Provider Benefits (Shown on Index/Home when Logged Out) ────────
   const renderProviderBenefits = () => {
-    const benefitsList = [
-      {
-        icon: 'lightning-bolt',
-        color: '#FF9500',
-        title: 'Instant Live Bookings',
-        desc: 'Receive immediate customer requests within your selected coverage radius with sound and push alerts.',
-      },
-      {
-        icon: 'bank-transfer',
-        color: '#30D158',
-        title: 'Guaranteed Direct Payouts',
-        desc: 'Fast, secure payouts directly into your linked bank account or UPI ID with 0% hidden deductions.',
-      },
-      {
-        icon: 'map-marker-radius',
-        color: '#0084FF',
-        title: 'Custom Coverage Radius',
-        desc: 'Define your operating perimeter from 5 km up to 30 km. You only get jobs within your comfort zone.',
-      },
-      {
-        icon: 'shield-check',
-        color: '#AF52DE',
-        title: '4-Pillar Trust Badge',
-        desc: 'Build customer credibility with verified phone, email, registered address, and official ID badges.',
-      },
-      {
-        icon: 'tag-off',
-        color: '#FF2D55',
-        title: '0% Joining Fee',
-        desc: 'Zero registration fee or monthly membership lock-in. Keep maximum earnings from your hard work.',
-      },
-      {
-        icon: 'headphones',
-        color: '#5856D6',
-        title: '24/7 Dedicated Support',
-        desc: 'Direct hotline and in-app priority assistance for all ServEasy verified service partners.',
-      },
-    ];
+    const savedLat = profileData?.latitude ? parseFloat(profileData.latitude) : undefined;
+    const savedLng = profileData?.longitude ? parseFloat(profileData.longitude) : undefined;
 
     const steps = [
       { num: '1', title: 'Sign In via OTP', desc: 'Instant 1-minute email verification, no passwords to remember.' },
@@ -4056,6 +4021,16 @@ function ProviderAppContent() {
 
     return (
       <View style={styles.benefitsContainer}>
+        {/* Greeting, Live Digital Clock & Local Weather Hero Card */}
+        <GreetingWeatherCard
+          theme={theme}
+          providerName="Partner"
+          latitude={liveGpsCoords?.latitude ?? savedLat}
+          longitude={liveGpsCoords?.longitude ?? savedLng}
+          addressHint={formAddress || profileData?.location_address}
+          refreshTrigger={weatherRefreshNonce}
+        />
+
         {/* Hero Featured Promo & Advertisement Carousel (Same Design & Colors as Login Carousel) */}
         <PromoBannerCarousel
           theme={theme}
@@ -4093,7 +4068,7 @@ function ProviderAppContent() {
           }}
         />
 
-        {/* Benefits Grid Header */}
+        {/* Benefits Section Header */}
         <View style={styles.benefitsSectionHeader}>
           <Text style={[styles.benefitsSectionTitle, { color: activeTheme.textPrimary }]}>
             Why Partner with ServEasy?
@@ -4103,29 +4078,19 @@ function ProviderAppContent() {
           </Text>
         </View>
 
-        {/* 6 Benefits Cards */}
-        <View style={styles.benefitsGrid}>
-          {benefitsList.map((b, idx) => (
-            <GlassCard
-              key={idx}
-              theme={theme}
-              intensity={20}
-              style={[
-                styles.benefitCard,
-                {
-                  borderColor: activeTheme.cardBorder,
-                  backgroundColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.65)',
-                },
-              ]}
-            >
-              <View style={[styles.benefitIconWrap, { backgroundColor: `${b.color}22` }]}>
-                <MaterialCommunityIcons name={b.icon as any} size={24} color={b.color} />
-              </View>
-              <Text style={[styles.benefitCardTitle, { color: activeTheme.textPrimary }]}>{b.title}</Text>
-              <Text style={[styles.benefitCardDesc, { color: activeTheme.textSecondary }]}>{b.desc}</Text>
-            </GlassCard>
-          ))}
-        </View>
+        {/* Why Partner with ServEasy Answers in Same Style Carousel */}
+        <WhyPartnerCarousel
+          theme={theme}
+          onActionPress={(item) => {
+            setLiveToast({
+              id: Date.now(),
+              title: item.title,
+              message: `Sign in to access ${item.title.toLowerCase()} and boost your vehicle care business.`,
+              type: 'info',
+            });
+            setAuthModalVisible(true);
+          }}
+        />
 
         {/* 3 Step "How it works" */}
         <GlassCard
