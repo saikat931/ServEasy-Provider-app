@@ -2548,7 +2548,7 @@ function ProviderAppContent() {
             } else {
               showCustomAlert(
                 '🎁 Partner Offer',
-                'Share your referral code or visit the partner portal to claim this exclusive benefit.'
+                'Visit the partner portal or check notifications to claim this exclusive benefit.'
               );
             }
           }}
@@ -4097,7 +4097,7 @@ function ProviderAppContent() {
               setLiveToast({
                 id: Date.now(),
                 title: '🎁 Exclusive Partner Deals',
-                message: 'Sign in to claim toolkit discounts, spare part offers, and referral bonuses.',
+                message: 'Sign in to claim toolkit discounts, spare part offers, and priority partner perks.',
                 type: 'info',
               });
             } else {
