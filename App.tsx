@@ -4056,32 +4056,42 @@ function ProviderAppContent() {
 
     return (
       <View style={styles.benefitsContainer}>
-        {/* Hero Card */}
-        <GlassCard
+        {/* Hero Featured Promo & Advertisement Carousel (Same Design & Colors as Login Carousel) */}
+        <PromoBannerCarousel
           theme={theme}
-          intensity={activeTheme.glassIntensity}
-          style={[styles.benefitsHeroCard, { borderColor: activeTheme.cardBorder }]}
-        >
-          <View style={styles.benefitsHeroBadge}>
-            <MaterialCommunityIcons name="star-shooting" size={14} color="#FFD60A" />
-            <Text style={styles.benefitsHeroBadgeText}>SERVEASY PARTNER NETWORK</Text>
-          </View>
-          <Text style={[styles.benefitsHeroTitle, { color: activeTheme.textPrimary }]}>
-            Grow Your Vehicle Care Business
-          </Text>
-          <Text style={[styles.benefitsHeroSubtitle, { color: activeTheme.textSecondary }]}>
-            Connect with thousands of car and bike owners seeking doorstep & workshop detailing services across your city.
-          </Text>
-
-          <TouchableOpacity
-            onPress={() => setAuthModalVisible(true)}
-            style={[styles.benefitsHeroCtaBtn, { backgroundColor: '#0084FF' }]}
-          >
-            <MaterialCommunityIcons name="login" size={18} color="#FFFFFF" />
-            <Text style={styles.benefitsHeroCtaBtnText}>Sign In / Join as Service Provider</Text>
-            <MaterialCommunityIcons name="arrow-right" size={16} color="#FFFFFF" />
-          </TouchableOpacity>
-        </GlassCard>
+          onActionPress={(action) => {
+            if (action === 'boost') {
+              setLiveToast({
+                id: Date.now(),
+                title: '🚀 Profile Boost #1',
+                message: 'Sign in to boost your profile and rank #1 for local vehicle detailing leads.',
+                type: 'info',
+              });
+            } else if (action === 'wallet') {
+              setLiveToast({
+                id: Date.now(),
+                title: '👑 0% Platform Fee',
+                message: 'Sign in to unlock zero platform fee and keep 100% of your earnings.',
+                type: 'info',
+              });
+            } else if (action === 'share') {
+              setLiveToast({
+                id: Date.now(),
+                title: '🎁 Exclusive Partner Deals',
+                message: 'Sign in to claim toolkit discounts, spare part offers, and referral bonuses.',
+                type: 'info',
+              });
+            } else {
+              setLiveToast({
+                id: Date.now(),
+                title: '🔐 Partner Sign In Required',
+                message: 'Sign in or join as a service partner to access this offer.',
+                type: 'info',
+              });
+            }
+            setAuthModalVisible(true);
+          }}
+        />
 
         {/* Benefits Grid Header */}
         <View style={styles.benefitsSectionHeader}>
@@ -4163,6 +4173,9 @@ function ProviderAppContent() {
             <Text style={styles.bottomCtaBtnText}>Sign In Now</Text>
           </TouchableOpacity>
         </GlassCard>
+
+        {/* Proud Made In India Footer */}
+        <ProudMadeInIndiaFooter theme={theme} />
       </View>
     );
   };
@@ -4205,7 +4218,7 @@ function ProviderAppContent() {
             style={styles.lockedBackBtn}
           >
             <Text style={[styles.lockedBackBtnText, { color: activeTheme.iconColor }]}>
-              ← View Partner Benefits
+              ← View Partner Overview
             </Text>
           </TouchableOpacity>
         </GlassCard>
@@ -4695,7 +4708,7 @@ function ProviderAppContent() {
                 <View style={styles.sectionHeaderRow}>
                   <View>
                     <Text style={[styles.sectionTitle, { color: activeTheme.textPrimary }]}>
-                      {activeSection === 'dashboard' && 'Partner Benefits'}
+                      {activeSection === 'dashboard' && 'Partner Overview'}
                       {activeSection === 'services' && 'My Services'}
                       {activeSection === 'bookings' && 'Live Bookings Manager'}
                       {activeSection === 'wallet' && 'My Wallet & Payouts'}
