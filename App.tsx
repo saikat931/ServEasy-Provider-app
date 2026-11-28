@@ -385,6 +385,46 @@ function ProviderAppContent() {
   const [formExpectedSalary, setFormExpectedSalary] = useState('');
   const [formServiceDesc, setFormServiceDesc] = useState('');
 
+  // Pretty Profile Container Edit Mode ('personal' | 'contact' | 'location' | 'professional' | 'rates' | null)
+  const [openProfileSection, setOpenProfileSection] = useState<string | null>(null);
+  const toggleProfileSection = (section: string) => {
+    setOpenProfileSection((prev) => (prev === section ? null : section));
+  };
+  const handleCancelProfileEdit = () => {
+    if (profileData) {
+      setFormFullName(profileData.full_name || providerUser?.first_name || '');
+      setFormCompanyName(profileData.company_name || '');
+      setFormGender(profileData.gender || '');
+      setFormDob(profileData.dob || '');
+      setFormAge(profileData.age ? String(profileData.age) : '');
+      setFormEmail(profileData.email || '');
+      setFormPhone(profileData.phone || '');
+      setFormAltPhone(profileData.alt_phone_number || '');
+      setFormWhatsapp(profileData.whatsapp_number || '');
+      setFormAddress(profileData.location_address || '');
+      setFormOtherAddress(profileData.other_address || '');
+      setFormPermanentAddress(profileData.permanent_address || '');
+      setFormLandmark(profileData.landmark || '');
+      setFormCity(profileData.city || '');
+      setFormState(profileData.state || '');
+      setFormCountry(profileData.country || 'India');
+      setFormPincode(profileData.pincode || '');
+      setFormRangeKm(String(profileData.service_range_km || 10));
+      setFormLanguages(profileData.languages_spoken || '');
+      setFormAboutMe(profileData.about_me || '');
+      setFormExperience(profileData.years_of_experience ? String(profileData.years_of_experience) : '0');
+      setFormWorkType(profileData.preferred_work_type || '');
+      setFormWorkingHours(profileData.working_hours || '');
+      setFormAvailableFrom(profileData.available_from || '');
+      setFormHourlyRate(profileData.hourly_rate ? String(profileData.hourly_rate) : '');
+      setFormDailyRate(profileData.daily_rate ? String(profileData.daily_rate) : '');
+      setFormMonthlyRate(profileData.monthly_rate ? String(profileData.monthly_rate) : '');
+      setFormExpectedSalary(profileData.expected_salary ? String(profileData.expected_salary) : '');
+      setFormServiceDesc(profileData.service_description || '');
+    }
+    setOpenProfileSection(null);
+  };
+
   // 5 KYC Verification Pillars & Modals States
   const [phoneModalVisible, setPhoneModalVisible] = useState(false);
   const [emailModalVisible, setEmailModalVisible] = useState(false);
@@ -1566,6 +1606,7 @@ function ProviderAppContent() {
 
       if (res.success) {
         Alert.alert('Profile Saved', 'Your provider account details and completion progress have been updated!');
+        setOpenProfileSection(null);
         loadLiveData(false);
       } else {
         Alert.alert('Save Failed', res.message);
@@ -3140,604 +3181,1081 @@ function ProviderAppContent() {
           </View>
         </GlassCard>
 
-        {/* 3. Account & Location Details Card (Matches Web Right Card in profile.php) */}
-        <GlassCard theme={theme} style={styles.webProfileCard} intensity={activeTheme.glassIntensity}>
-          <View style={styles.webCardHeader}>
-            <Text style={styles.webCardHeaderTitle}>
-              Account & Location Details
-            </Text>
-            <TouchableOpacity
-              onPress={handleSaveProfile}
-              disabled={isSavingProfile}
-              style={[styles.saveProfileBtnTop, { backgroundColor: '#05c279' }]}
-            >
-              {isSavingProfile ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <>
-                  <MaterialCommunityIcons name="content-save-outline" size={15} color="#FFFFFF" />
-                  <Text style={styles.saveProfileBtnTopText}>Save Profile</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
+        {/* ─── 3. PRETTY PROFILE BOXES / CONTAINERS ───────────────────────── */}
+        {/* On-click / On-edit container form opens smoothly with Save & Cancel */}
 
-          <View style={styles.formContainer}>
-            {/* Full Name */}
-            <View style={styles.webFormRow}>
-              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Full Name:</Text>
-              <TextInput
-                style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                value={formFullName}
-                onChangeText={setFormFullName}
-                placeholder="Enter your name"
-                placeholderTextColor={activeTheme.textSecondary}
-              />
-            </View>
-
-            {/* Gender Selector */}
-            <View style={styles.webFormRow}>
-              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Gender:</Text>
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-                {['Male', 'Female', 'Other'].map((g) => (
-                  <TouchableOpacity
-                    key={g}
-                    onPress={() => setFormGender(g)}
-                    style={[
-                      styles.genderPillBtn,
-                      {
-                        backgroundColor: formGender === g ? '#05c279' : activeTheme.tableHeaderBg,
-                        borderColor: formGender === g ? '#05c279' : activeTheme.cardBorder,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.genderPillBtnText,
-                        { color: formGender === g ? '#FFFFFF' : activeTheme.textPrimary },
-                      ]}
-                    >
-                      {g}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+        {/* CONTAINER 1: PERSONAL DETAILS */}
+        <GlassCard theme={theme} style={styles.prettyProfileBox} intensity={activeTheme.glassIntensity}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => toggleProfileSection('personal')}
+            style={styles.prettyBoxHeader}
+          >
+            <View style={styles.prettyBoxTitleWrap}>
+              <View style={[styles.prettyBoxIconWrap, { backgroundColor: 'rgba(0, 132, 255, 0.15)' }]}>
+                <MaterialCommunityIcons name="account-outline" size={20} color="#0084FF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.prettyBoxTitle, { color: activeTheme.textPrimary }]}>Personal Details</Text>
+                <Text style={[styles.prettyBoxSubtitle, { color: activeTheme.textSecondary }]}>Name, Gender, DOB & Age</Text>
               </View>
             </View>
+            <TouchableOpacity
+              onPress={() => toggleProfileSection('personal')}
+              style={[
+                styles.prettyBoxEditBtn,
+                {
+                  backgroundColor: openProfileSection === 'personal' ? 'rgba(255,69,58,0.12)' : 'rgba(5, 194, 121, 0.12)',
+                  borderColor: openProfileSection === 'personal' ? '#FF453A' : '#05c279',
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={openProfileSection === 'personal' ? 'close' : 'pencil-outline'}
+                size={13}
+                color={openProfileSection === 'personal' ? '#FF453A' : '#05c279'}
+              />
+              <Text
+                style={[
+                  styles.prettyBoxEditBtnText,
+                  { color: openProfileSection === 'personal' ? '#FF453A' : '#05c279' },
+                ]}
+              >
+                {openProfileSection === 'personal' ? 'Close' : 'Edit'}
+              </Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
 
-            {/* Date of Birth & Age */}
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <View style={[styles.webFormRow, { flex: 1.4 }]}>
-                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Date of Birth:</Text>
+          {/* Pretty Summary Box (Closed) */}
+          {openProfileSection !== 'personal' ? (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => toggleProfileSection('personal')}
+              style={styles.prettySummaryContent}
+            >
+              <View style={styles.prettySummaryRow}>
+                <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Full Name</Text>
+                <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]}>{formFullName || 'Not provided'}</Text>
+              </View>
+              <View style={styles.prettySummaryRow}>
+                <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Gender</Text>
+                <View style={[styles.prettyValueChip, { backgroundColor: activeTheme.tableHeaderBg }]}>
+                  <MaterialCommunityIcons
+                    name={formGender === 'Female' ? 'gender-female' : formGender === 'Male' ? 'gender-male' : 'account'}
+                    size={13}
+                    color="#05c279"
+                  />
+                  <Text style={[styles.prettyValueChipText, { color: activeTheme.textPrimary }]}>{formGender || 'Not set'}</Text>
+                </View>
+              </View>
+              <View style={styles.prettySummaryRow}>
+                <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Date of Birth & Age</Text>
+                <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]}>
+                  {formDob || 'Not set'} {formAge ? `• ${formAge} yrs` : ''}
+                </Text>
+              </View>
+              {hasCompany && (
+                <View style={styles.prettySummaryRow}>
+                  <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Company Name</Text>
+                  <Text style={[styles.prettySummaryVal, { color: '#05c279' }]}>{formCompanyName || 'Registered'}</Text>
+                </View>
+              )}
+              <View style={styles.prettySummaryHint}>
+                <MaterialCommunityIcons name="gesture-tap" size={13} color="#05c279" />
+                <Text style={[styles.prettySummaryHintText, { color: '#05c279' }]}>Tap to open form and edit</Text>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            /* Open Form View */
+            <View style={styles.prettyFormWrap}>
+              <View style={styles.webFormRow}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Full Name:</Text>
                 <TextInput
                   style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                  value={formDob}
-                  onChangeText={setFormDob}
+                  value={formFullName}
+                  onChangeText={setFormFullName}
+                  placeholder="Enter your name"
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+
+              <View style={styles.webFormRow}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Gender:</Text>
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+                  {['Male', 'Female', 'Other'].map((g) => (
+                    <TouchableOpacity
+                      key={g}
+                      onPress={() => setFormGender(g)}
+                      style={[
+                        styles.genderPillBtn,
+                        {
+                          backgroundColor: formGender === g ? '#05c279' : activeTheme.tableHeaderBg,
+                          borderColor: formGender === g ? '#05c279' : activeTheme.cardBorder,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.genderPillBtnText,
+                          { color: formGender === g ? '#FFFFFF' : activeTheme.textPrimary },
+                        ]}
+                      >
+                        {g}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={[styles.webFormRow, { flex: 1.4 }]}>
+                  <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Date of Birth:</Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={formDob}
+                    onChangeText={setFormDob}
+                    placeholder="YYYY-MM-DD"
+                    placeholderTextColor={activeTheme.textSecondary}
+                  />
+                </View>
+                <View style={[styles.webFormRow, { flex: 0.8 }]}>
+                  <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Age:</Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={formAge}
+                    onChangeText={setFormAge}
+                    keyboardType="numeric"
+                    placeholder="Age"
+                    placeholderTextColor={activeTheme.textSecondary}
+                  />
+                </View>
+              </View>
+
+              {hasCompany && (
+                <View style={styles.webFormRow}>
+                  <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Company Name:</Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={formCompanyName}
+                    onChangeText={setFormCompanyName}
+                    placeholder="e.g. Apex Electricals Pvt. Ltd."
+                    placeholderTextColor={activeTheme.textSecondary}
+                  />
+                </View>
+              )}
+
+              <View style={styles.prettyFormActionRow}>
+                <TouchableOpacity
+                  onPress={handleSaveProfile}
+                  disabled={isSavingProfile}
+                  style={[styles.prettyFormSaveBtn, { backgroundColor: '#05c279' }]}
+                >
+                  {isSavingProfile ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="check-bold" size={15} color="#FFFFFF" />
+                      <Text style={styles.prettyFormSaveBtnText}>Save Changes</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleCancelProfileEdit}
+                  style={[styles.prettyFormCancelBtn, { borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                >
+                  <Text style={[styles.prettyFormCancelBtnText, { color: activeTheme.textSecondary }]}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </GlassCard>
+
+        {/* CONTAINER 2: CONTACT INFORMATION */}
+        <GlassCard theme={theme} style={styles.prettyProfileBox} intensity={activeTheme.glassIntensity}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => toggleProfileSection('contact')}
+            style={styles.prettyBoxHeader}
+          >
+            <View style={styles.prettyBoxTitleWrap}>
+              <View style={[styles.prettyBoxIconWrap, { backgroundColor: 'rgba(56, 189, 248, 0.15)' }]}>
+                <MaterialCommunityIcons name="phone-in-talk-outline" size={20} color="#38BDF8" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.prettyBoxTitle, { color: activeTheme.textPrimary }]}>Contact Information</Text>
+                <Text style={[styles.prettyBoxSubtitle, { color: activeTheme.textSecondary }]}>Phone, WhatsApp & Email</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              onPress={() => toggleProfileSection('contact')}
+              style={[
+                styles.prettyBoxEditBtn,
+                {
+                  backgroundColor: openProfileSection === 'contact' ? 'rgba(255,69,58,0.12)' : 'rgba(5, 194, 121, 0.12)',
+                  borderColor: openProfileSection === 'contact' ? '#FF453A' : '#05c279',
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={openProfileSection === 'contact' ? 'close' : 'pencil-outline'}
+                size={13}
+                color={openProfileSection === 'contact' ? '#FF453A' : '#05c279'}
+              />
+              <Text
+                style={[
+                  styles.prettyBoxEditBtnText,
+                  { color: openProfileSection === 'contact' ? '#FF453A' : '#05c279' },
+                ]}
+              >
+                {openProfileSection === 'contact' ? 'Close' : 'Edit'}
+              </Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+
+          {/* Pretty Summary Box (Closed) */}
+          {openProfileSection !== 'contact' ? (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => toggleProfileSection('contact')}
+              style={styles.prettySummaryContent}
+            >
+              <View style={styles.prettySummaryRow}>
+                <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Primary Phone</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]}>{formPhone || 'Not set'}</Text>
+                  {formPhone ? <MaterialCommunityIcons name="check-circle" size={13} color="#05c279" /> : null}
+                </View>
+              </View>
+              <View style={styles.prettySummaryRow}>
+                <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>WhatsApp Number</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                  <MaterialCommunityIcons name="whatsapp" size={14} color="#25D366" />
+                  <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]}>{formWhatsapp || 'Not provided'}</Text>
+                </View>
+              </View>
+              <View style={styles.prettySummaryRow}>
+                <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Alternate Phone</Text>
+                <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]}>{formAltPhone || 'Not provided'}</Text>
+              </View>
+              <View style={styles.prettySummaryRow}>
+                <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Email Address</Text>
+                <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]}>{formEmail || 'Not set'}</Text>
+              </View>
+              <View style={styles.prettySummaryHint}>
+                <MaterialCommunityIcons name="gesture-tap" size={13} color="#05c279" />
+                <Text style={[styles.prettySummaryHintText, { color: '#05c279' }]}>Tap to open form and edit</Text>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            /* Open Form View */
+            <View style={styles.prettyFormWrap}>
+              <View style={styles.webFormRow}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Primary Phone Number:</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formPhone}
+                  onChangeText={setFormPhone}
+                  keyboardType="phone-pad"
+                  placeholder="+91 XXXXX XXXXX"
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+
+              <View style={styles.webFormRow}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <MaterialCommunityIcons name="whatsapp" size={15} color="#25D366" style={{ marginRight: 4 }} />
+                  <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>WhatsApp Number:</Text>
+                </View>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formWhatsapp}
+                  onChangeText={setFormWhatsapp}
+                  keyboardType="phone-pad"
+                  placeholder="+91 XXXXX XXXXX"
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+
+              <View style={styles.webFormRow}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Alternate Phone Number:</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formAltPhone}
+                  onChangeText={setFormAltPhone}
+                  keyboardType="phone-pad"
+                  placeholder="+91 XXXXX XXXXX"
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+
+              <View style={styles.webFormRow}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Email Address:</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formEmail}
+                  onChangeText={setFormEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  placeholder="email@example.com"
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+
+              <View style={styles.prettyFormActionRow}>
+                <TouchableOpacity
+                  onPress={handleSaveProfile}
+                  disabled={isSavingProfile}
+                  style={[styles.prettyFormSaveBtn, { backgroundColor: '#05c279' }]}
+                >
+                  {isSavingProfile ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="check-bold" size={15} color="#FFFFFF" />
+                      <Text style={styles.prettyFormSaveBtnText}>Save Changes</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleCancelProfileEdit}
+                  style={[styles.prettyFormCancelBtn, { borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                >
+                  <Text style={[styles.prettyFormCancelBtnText, { color: activeTheme.textSecondary }]}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </GlassCard>
+
+        {/* CONTAINER 3: LOCATION & SERVICE AREA */}
+        <GlassCard theme={theme} style={styles.prettyProfileBox} intensity={activeTheme.glassIntensity}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => toggleProfileSection('location')}
+            style={styles.prettyBoxHeader}
+          >
+            <View style={styles.prettyBoxTitleWrap}>
+              <View style={[styles.prettyBoxIconWrap, { backgroundColor: 'rgba(5, 194, 121, 0.15)' }]}>
+                <MaterialCommunityIcons name="map-marker-radius" size={20} color="#05c279" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.prettyBoxTitle, { color: activeTheme.textPrimary }]}>Location & Service Area</Text>
+                <Text style={[styles.prettyBoxSubtitle, { color: activeTheme.textSecondary }]}>Doorstep address, Range & Pin Map</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              onPress={() => toggleProfileSection('location')}
+              style={[
+                styles.prettyBoxEditBtn,
+                {
+                  backgroundColor: openProfileSection === 'location' ? 'rgba(255,69,58,0.12)' : 'rgba(5, 194, 121, 0.12)',
+                  borderColor: openProfileSection === 'location' ? '#FF453A' : '#05c279',
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={openProfileSection === 'location' ? 'close' : 'pencil-outline'}
+                size={13}
+                color={openProfileSection === 'location' ? '#FF453A' : '#05c279'}
+              />
+              <Text
+                style={[
+                  styles.prettyBoxEditBtnText,
+                  { color: openProfileSection === 'location' ? '#FF453A' : '#05c279' },
+                ]}
+              >
+                {openProfileSection === 'location' ? 'Close' : 'Edit'}
+              </Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+
+          {/* Pretty Summary Box (Closed) */}
+          {openProfileSection !== 'location' ? (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => toggleProfileSection('location')}
+              style={styles.prettySummaryContent}
+            >
+              <View style={styles.prettySummaryRow}>
+                <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Doorstep Address</Text>
+                <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]} numberOfLines={2}>
+                  {formAddress || 'Address not pinned yet'}
+                </Text>
+              </View>
+              <View style={styles.prettySummaryRow}>
+                <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Landmark</Text>
+                <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]}>{formLandmark || 'None'}</Text>
+              </View>
+              <View style={styles.prettySummaryRow}>
+                <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>City, State & PIN</Text>
+                <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]}>
+                  {formCity ? `${formCity}, ` : ''}{formState ? `${formState} ` : ''}{formPincode ? `• ${formPincode}` : ''}
+                </Text>
+              </View>
+              <View style={styles.prettySummaryRow}>
+                <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Service Range</Text>
+                <View style={[styles.prettyValueChip, { backgroundColor: 'rgba(5, 194, 121, 0.12)' }]}>
+                  <MaterialCommunityIcons name="radar" size={13} color="#05c279" />
+                  <Text style={[styles.prettyValueChipText, { color: '#05c279' }]}>{formRangeKm || '10'} KM Radius</Text>
+                </View>
+              </View>
+              <View style={styles.prettySummaryRow}>
+                <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Map Pinning</Text>
+                <Text style={[styles.prettySummaryVal, { color: activeTheme.textSecondary, fontSize: 11 }]}>
+                  📍 {mapLatitude.toFixed(4)}, {mapLongitude.toFixed(4)}
+                </Text>
+              </View>
+              <View style={styles.prettySummaryHint}>
+                <MaterialCommunityIcons name="gesture-tap" size={13} color="#05c279" />
+                <Text style={[styles.prettySummaryHintText, { color: '#05c279' }]}>Tap to open form and edit</Text>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            /* Open Form View */
+            <View style={styles.prettyFormWrap}>
+              {/* Toggle Map Button */}
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary, marginBottom: 0 }]}>
+                  Interactive Map Pinning:
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowProfileMap((prev) => !prev)}
+                  style={[
+                    styles.pinOnMapBtn,
+                    { backgroundColor: showProfileMap ? '#FF453A' : '#05c279' },
+                  ]}
+                >
+                  <MaterialCommunityIcons
+                    name={showProfileMap ? 'eye-off-outline' : 'map-marker-radius'}
+                    size={13}
+                    color="#FFFFFF"
+                  />
+                  <Text style={styles.pinOnMapBtnText}>
+                    {showProfileMap ? 'Hide Map' : 'Show Map'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Inline Map Section (Toggled by Pin on Map button) */}
+              {showProfileMap && (
+                <View style={[styles.inlineMapContainer, { borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg, marginBottom: 14 }]}>
+                  <View style={styles.mapActionRow}>
+                    <TouchableOpacity
+                      onPress={handleUseLiveLocation}
+                      disabled={isLocating}
+                      style={[styles.singlePinLocationBtn, isLocating && { opacity: 0.75 }]}
+                      activeOpacity={0.8}
+                    >
+                      {isLocating ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <MaterialCommunityIcons name="crosshairs-gps" size={15} color="#FFFFFF" />
+                      )}
+                      <Text style={styles.singlePinLocationBtnText}>
+                        {isLocating ? 'Locating Doorstep...' : 'Pin Current Location'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={[styles.leafletMapCanvas, { borderColor: activeTheme.cardBorder }]}>
+                    <Image
+                      source={{ uri: getGoogleMapTileUrl(mapLatitude, mapLongitude, mapZoom, mapLayer) }}
+                      style={StyleSheet.absoluteFill}
+                      resizeMode="cover"
+                    />
+
+                    <View style={styles.leafletZoomControl}>
+                      <TouchableOpacity onPress={handleZoomIn} style={styles.leafletZoomBtn} activeOpacity={0.8}>
+                        <Text style={styles.leafletZoomText}>+</Text>
+                      </TouchableOpacity>
+                      <View style={styles.leafletZoomDivider} />
+                      <TouchableOpacity onPress={handleZoomOut} style={styles.leafletZoomBtn} activeOpacity={0.8}>
+                        <Text style={styles.leafletZoomText}>−</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity onPress={handleToggleLayer} style={styles.leafletLayerBtn} activeOpacity={0.8}>
+                      <MaterialCommunityIcons
+                        name={mapLayer === 'roadmap' ? 'layers-outline' : 'earth'}
+                        size={18}
+                        color="#1E293B"
+                      />
+                    </TouchableOpacity>
+
+                    <View style={styles.leafletCenterPinContainer} pointerEvents="box-none">
+                      {showMapPopup && (
+                        <View style={styles.leafletPopupWrapper} pointerEvents="box-none">
+                          <View style={styles.leafletPopupCard}>
+                            <Text style={{ fontSize: 11, marginRight: 4 }}>📍</Text>
+                            <Text style={styles.leafletPopupText} numberOfLines={2}>
+                              {formAddress ? formAddress : `${mapLatitude.toFixed(5)}, ${mapLongitude.toFixed(5)}`}
+                            </Text>
+                            <TouchableOpacity
+                              onPress={() => setShowMapPopup(false)}
+                              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              style={{ marginLeft: 6 }}
+                            >
+                              <MaterialCommunityIcons name="close" size={13} color="#94A3B8" />
+                            </TouchableOpacity>
+                          </View>
+                          <View style={styles.leafletPopupBeak} />
+                        </View>
+                      )}
+
+                      <View style={styles.leafletPinTouch}>
+                        <MaterialCommunityIcons name="map-marker" size={38} color="#0084FF" />
+                      </View>
+                      <View style={styles.leafletPinShadow} />
+                    </View>
+
+                    <View style={styles.leafletNudgePad}>
+                      <TouchableOpacity
+                        onPress={() => handleNudgeCoords(0.0005, 0)}
+                        style={styles.leafletNudgeBtn}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <MaterialCommunityIcons name="chevron-up" size={16} color="#FFFFFF" />
+                      </TouchableOpacity>
+                      <View style={{ flexDirection: 'row', gap: 16 }}>
+                        <TouchableOpacity
+                          onPress={() => handleNudgeCoords(0, -0.0005)}
+                          style={styles.leafletNudgeBtn}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        >
+                          <MaterialCommunityIcons name="chevron-left" size={16} color="#FFFFFF" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => handleNudgeCoords(0, 0.0005)}
+                          style={styles.leafletNudgeBtn}
+                          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        >
+                          <MaterialCommunityIcons name="chevron-right" size={16} color="#FFFFFF" />
+                        </TouchableOpacity>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => handleNudgeCoords(-0.0005, 0)}
+                        style={styles.leafletNudgeBtn}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <MaterialCommunityIcons name="chevron-down" size={16} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.leafletBottomBar}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 }}>
+                        <MaterialCommunityIcons name="information" size={11} color="#94A3B8" />
+                        <Text style={styles.leafletStatusText} numberOfLines={1}>Doorstep location pinned on map</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                        <Text style={styles.leafletCoordsText}>
+                          📍 {mapLatitude.toFixed(7)}, {mapLongitude.toFixed(7)}
+                        </Text>
+                        <Text style={styles.leafletWatermarkText}>Leaflet | © Google Maps</Text>
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.mapFooterNote}>
+                    <MaterialCommunityIcons name="pin" size={13} color="#05c279" />
+                    <Text style={[styles.mapFooterNoteText, { color: activeTheme.textSecondary, flex: 1 }]}>
+                      Drag the pin or use nudge arrows to fine-tune your exact doorstep location
+                    </Text>
+                    <TouchableOpacity onPress={handleSyncPinDetails} style={styles.syncPinBtn}>
+                      <MaterialCommunityIcons name="sync" size={12} color="#05c279" />
+                      <Text style={styles.syncPinBtnText}>Sync Address</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              {/* Full Address */}
+              <View style={styles.webFormRow}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Full Address: <Text style={{ color: '#FF453A' }}>*</Text></Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formAddress}
+                  onChangeText={setFormAddress}
+                  placeholder="Enter street address, area or building name..."
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+
+              {/* Landmark */}
+              <View style={styles.webFormRow}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Landmark: <Text style={{ color: '#FF453A' }}>*</Text></Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formLandmark}
+                  onChangeText={setFormLandmark}
+                  placeholder="Enter nearby landmark..."
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+
+              {/* Pincode & Service Range */}
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={[styles.webFormRow, { flex: 1 }]}>
+                  <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Pincode: <Text style={{ color: '#FF453A' }}>*</Text></Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={formPincode}
+                    onChangeText={setFormPincode}
+                    keyboardType="numeric"
+                    placeholder="6-digit pincode"
+                    placeholderTextColor={activeTheme.textSecondary}
+                  />
+                </View>
+
+                <View style={[styles.webFormRow, { flex: 1 }]}>
+                  <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Service Range (KM):</Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={formRangeKm}
+                    onChangeText={setFormRangeKm}
+                    keyboardType="numeric"
+                    placeholder="e.g. 10"
+                    placeholderTextColor={activeTheme.textSecondary}
+                  />
+                </View>
+              </View>
+
+              {/* Permanent Address */}
+              <View style={styles.webFormRow}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Permanent Home Address:</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formPermanentAddress}
+                  onChangeText={setFormPermanentAddress}
+                  placeholder="Permanent home or registered address..."
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+
+              {/* City, State & Country */}
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={[styles.webFormRow, { flex: 1 }]}>
+                  <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>City:</Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={formCity}
+                    onChangeText={setFormCity}
+                    placeholder="e.g. Kolkata"
+                    placeholderTextColor={activeTheme.textSecondary}
+                  />
+                </View>
+                <View style={[styles.webFormRow, { flex: 1 }]}>
+                  <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>State:</Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={formState}
+                    onChangeText={setFormState}
+                    placeholder="e.g. West Bengal"
+                    placeholderTextColor={activeTheme.textSecondary}
+                  />
+                </View>
+                <View style={[styles.webFormRow, { flex: 0.8 }]}>
+                  <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Country:</Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={formCountry}
+                    onChangeText={setFormCountry}
+                    placeholder="India"
+                    placeholderTextColor={activeTheme.textSecondary}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.prettyFormActionRow}>
+                <TouchableOpacity
+                  onPress={handleSaveProfile}
+                  disabled={isSavingProfile}
+                  style={[styles.prettyFormSaveBtn, { backgroundColor: '#05c279' }]}
+                >
+                  {isSavingProfile ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="check-bold" size={15} color="#FFFFFF" />
+                      <Text style={styles.prettyFormSaveBtnText}>Save Changes</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleCancelProfileEdit}
+                  style={[styles.prettyFormCancelBtn, { borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                >
+                  <Text style={[styles.prettyFormCancelBtnText, { color: activeTheme.textSecondary }]}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </GlassCard>
+
+        {/* CONTAINER 4: PROFESSIONAL & EXPERIENCE */}
+        <GlassCard theme={theme} style={styles.prettyProfileBox} intensity={activeTheme.glassIntensity}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => toggleProfileSection('professional')}
+            style={styles.prettyBoxHeader}
+          >
+            <View style={styles.prettyBoxTitleWrap}>
+              <View style={[styles.prettyBoxIconWrap, { backgroundColor: 'rgba(168, 85, 247, 0.15)' }]}>
+                <MaterialCommunityIcons name="briefcase-outline" size={20} color="#A855F7" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.prettyBoxTitle, { color: activeTheme.textPrimary }]}>Professional & Experience</Text>
+                <Text style={[styles.prettyBoxSubtitle, { color: activeTheme.textSecondary }]}>Bio, Skills, Languages & Timings</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              onPress={() => toggleProfileSection('professional')}
+              style={[
+                styles.prettyBoxEditBtn,
+                {
+                  backgroundColor: openProfileSection === 'professional' ? 'rgba(255,69,58,0.12)' : 'rgba(5, 194, 121, 0.12)',
+                  borderColor: openProfileSection === 'professional' ? '#FF453A' : '#05c279',
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={openProfileSection === 'professional' ? 'close' : 'pencil-outline'}
+                size={13}
+                color={openProfileSection === 'professional' ? '#FF453A' : '#05c279'}
+              />
+              <Text
+                style={[
+                  styles.prettyBoxEditBtnText,
+                  { color: openProfileSection === 'professional' ? '#FF453A' : '#05c279' },
+                ]}
+              >
+                {openProfileSection === 'professional' ? 'Close' : 'Edit'}
+              </Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+
+          {/* Pretty Summary Box (Closed) */}
+          {openProfileSection !== 'professional' ? (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => toggleProfileSection('professional')}
+              style={styles.prettySummaryContent}
+            >
+              <View style={styles.prettySummaryRow}>
+                <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Experience</Text>
+                <View style={[styles.prettyValueChip, { backgroundColor: 'rgba(168, 85, 247, 0.12)' }]}>
+                  <MaterialCommunityIcons name="star-outline" size={13} color="#A855F7" />
+                  <Text style={[styles.prettyValueChipText, { color: '#A855F7' }]}>{formExperience || '0'} Years Experience</Text>
+                </View>
+              </View>
+              <View style={styles.prettySummaryRow}>
+                <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Languages</Text>
+                <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]}>{formLanguages || 'Not specified'}</Text>
+              </View>
+              <View style={styles.prettySummaryRow}>
+                <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Work Type</Text>
+                <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]}>{formWorkType || 'Flexible / On-demand'}</Text>
+              </View>
+              <View style={styles.prettySummaryRow}>
+                <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Working Hours</Text>
+                <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]}>{formWorkingHours || 'Not specified'}</Text>
+              </View>
+              <View style={styles.prettySummaryRow}>
+                <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Available From</Text>
+                <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]}>{formAvailableFrom || 'Immediate'}</Text>
+              </View>
+              {formAboutMe ? (
+                <View style={{ marginTop: 4, padding: 8, borderRadius: 8, backgroundColor: activeTheme.tableHeaderBg }}>
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: activeTheme.textSecondary, marginBottom: 2 }}>About Me / Bio:</Text>
+                  <Text style={{ fontSize: 12, color: activeTheme.textPrimary, lineHeight: 16 }} numberOfLines={2}>{formAboutMe}</Text>
+                </View>
+              ) : null}
+              <View style={styles.prettySummaryHint}>
+                <MaterialCommunityIcons name="gesture-tap" size={13} color="#05c279" />
+                <Text style={[styles.prettySummaryHintText, { color: '#05c279' }]}>Tap to open form and edit</Text>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            /* Open Form View */
+            <View style={styles.prettyFormWrap}>
+              <View style={styles.webFormRow}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>About Me / Bio:</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg, minHeight: 70, textAlignVertical: 'top' }]}
+                  value={formAboutMe}
+                  onChangeText={setFormAboutMe}
+                  multiline={true}
+                  numberOfLines={3}
+                  placeholder="Describe your expertise, specialty, and background..."
+                  placeholderTextColor={activeTheme.textSecondary}
+                />
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={[styles.webFormRow, { flex: 0.9 }]}>
+                  <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Experience (Years):</Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={formExperience}
+                    onChangeText={setFormExperience}
+                    keyboardType="numeric"
+                    placeholder="e.g. 5"
+                    placeholderTextColor={activeTheme.textSecondary}
+                  />
+                </View>
+                <View style={[styles.webFormRow, { flex: 1.5 }]}>
+                  <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Languages Spoken:</Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={formLanguages}
+                    onChangeText={setFormLanguages}
+                    placeholder="e.g. Hindi, English, Bengali"
+                    placeholderTextColor={activeTheme.textSecondary}
+                  />
+                </View>
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={[styles.webFormRow, { flex: 1 }]}>
+                  <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Preferred Work Type:</Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={formWorkType}
+                    onChangeText={setFormWorkType}
+                    placeholder="e.g. Full-time / On-demand"
+                    placeholderTextColor={activeTheme.textSecondary}
+                  />
+                </View>
+                <View style={[styles.webFormRow, { flex: 1 }]}>
+                  <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Working Hours:</Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={formWorkingHours}
+                    onChangeText={setFormWorkingHours}
+                    placeholder="e.g. 09:00 AM - 07:00 PM"
+                    placeholderTextColor={activeTheme.textSecondary}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.webFormRow}>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Available From:</Text>
+                <TextInput
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                  value={formAvailableFrom}
+                  onChangeText={setFormAvailableFrom}
                   placeholder="YYYY-MM-DD"
                   placeholderTextColor={activeTheme.textSecondary}
                 />
               </View>
-              <View style={[styles.webFormRow, { flex: 0.8 }]}>
-                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Age:</Text>
-                <TextInput
-                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                  value={formAge}
-                  onChangeText={setFormAge}
-                  keyboardType="numeric"
-                  placeholder="Age"
-                  placeholderTextColor={activeTheme.textSecondary}
-                />
-              </View>
-            </View>
 
-            {/* Company Name (Shown only if registered company) */}
-            {hasCompany && (
               <View style={styles.webFormRow}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-                  <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Company Name:</Text>
-                  <View style={styles.regBadgePill}>
-                    <Text style={styles.regBadgePillText}>Registered</Text>
-                  </View>
-                </View>
+                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Service Description:</Text>
                 <TextInput
-                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                  value={formCompanyName}
-                  onChangeText={setFormCompanyName}
-                  placeholder="e.g. Apex Electricals Pvt. Ltd."
+                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg, minHeight: 60, textAlignVertical: 'top' }]}
+                  value={formServiceDesc}
+                  onChangeText={setFormServiceDesc}
+                  multiline={true}
+                  numberOfLines={2}
+                  placeholder="Detailed description of services offered..."
                   placeholderTextColor={activeTheme.textSecondary}
                 />
               </View>
-            )}
 
-            {/* Email Address */}
-            <View style={styles.webFormRow}>
-              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Email Address:</Text>
-              <TextInput
-                style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                value={formEmail}
-                onChangeText={setFormEmail}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                placeholder="email@example.com"
-                placeholderTextColor={activeTheme.textSecondary}
-              />
-            </View>
-
-            {/* Phone Number */}
-            <View style={styles.webFormRow}>
-              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Primary Phone Number:</Text>
-              <TextInput
-                style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                value={formPhone}
-                onChangeText={setFormPhone}
-                keyboardType="phone-pad"
-                placeholder="+91 XXXXX XXXXX"
-                placeholderTextColor={activeTheme.textSecondary}
-              />
-            </View>
-
-            {/* Alternate Phone Number */}
-            <View style={styles.webFormRow}>
-              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Alternate Phone Number:</Text>
-              <TextInput
-                style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                value={formAltPhone}
-                onChangeText={setFormAltPhone}
-                keyboardType="phone-pad"
-                placeholder="+91 XXXXX XXXXX"
-                placeholderTextColor={activeTheme.textSecondary}
-              />
-            </View>
-
-            {/* WhatsApp Number */}
-            <View style={styles.webFormRow}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <MaterialCommunityIcons name="whatsapp" size={15} color="#25D366" style={{ marginRight: 4 }} />
-                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>WhatsApp Number:</Text>
+              <View style={styles.prettyFormActionRow}>
+                <TouchableOpacity
+                  onPress={handleSaveProfile}
+                  disabled={isSavingProfile}
+                  style={[styles.prettyFormSaveBtn, { backgroundColor: '#05c279' }]}
+                >
+                  {isSavingProfile ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="check-bold" size={15} color="#FFFFFF" />
+                      <Text style={styles.prettyFormSaveBtnText}>Save Changes</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleCancelProfileEdit}
+                  style={[styles.prettyFormCancelBtn, { borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                >
+                  <Text style={[styles.prettyFormCancelBtnText, { color: activeTheme.textSecondary }]}>Cancel</Text>
+                </TouchableOpacity>
               </View>
-              <TextInput
-                style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                value={formWhatsapp}
-                onChangeText={setFormWhatsapp}
-                keyboardType="phone-pad"
-                placeholder="+91 XXXXX XXXXX"
-                placeholderTextColor={activeTheme.textSecondary}
-              />
             </View>
+          )}
+        </GlassCard>
 
-            {/* Location Details Subheader */}
-            <View style={styles.webSubheaderRow}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <MaterialCommunityIcons name="map-marker" size={16} color="#05c279" />
-                <Text style={styles.webSubheaderTitle}>Location Details</Text>
+        {/* CONTAINER 5: RATES & SALARY EXPECTATIONS */}
+        <GlassCard theme={theme} style={styles.prettyProfileBox} intensity={activeTheme.glassIntensity}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => toggleProfileSection('rates')}
+            style={styles.prettyBoxHeader}
+          >
+            <View style={styles.prettyBoxTitleWrap}>
+              <View style={[styles.prettyBoxIconWrap, { backgroundColor: 'rgba(245, 158, 11, 0.15)' }]}>
+                <MaterialCommunityIcons name="currency-inr" size={20} color="#F59E0B" />
               </View>
-              <TouchableOpacity
-                onPress={() => setShowProfileMap((prev) => !prev)}
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.prettyBoxTitle, { color: activeTheme.textPrimary }]}>Rates & Salary Expectations</Text>
+                <Text style={[styles.prettyBoxSubtitle, { color: activeTheme.textSecondary }]}>Hourly, Daily, Monthly Rates</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              onPress={() => toggleProfileSection('rates')}
+              style={[
+                styles.prettyBoxEditBtn,
+                {
+                  backgroundColor: openProfileSection === 'rates' ? 'rgba(255,69,58,0.12)' : 'rgba(5, 194, 121, 0.12)',
+                  borderColor: openProfileSection === 'rates' ? '#FF453A' : '#05c279',
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={openProfileSection === 'rates' ? 'close' : 'pencil-outline'}
+                size={13}
+                color={openProfileSection === 'rates' ? '#FF453A' : '#05c279'}
+              />
+              <Text
                 style={[
-                  styles.pinOnMapBtn,
-                  { backgroundColor: showProfileMap ? '#FF453A' : '#05c279' },
+                  styles.prettyBoxEditBtnText,
+                  { color: openProfileSection === 'rates' ? '#FF453A' : '#05c279' },
                 ]}
               >
-                <MaterialCommunityIcons
-                  name={showProfileMap ? 'eye-off-outline' : 'map-marker-radius'}
-                  size={13}
-                  color="#FFFFFF"
-                />
-                <Text style={styles.pinOnMapBtnText}>
-                  {showProfileMap ? 'Hide Map' : 'Pin on Map'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+                {openProfileSection === 'rates' ? 'Close' : 'Edit'}
+              </Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
 
-            {/* Inline Map Section (Toggled by Pin on Map button) */}
-            {showProfileMap && (
-              <View style={[styles.inlineMapContainer, { borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}>
-                {/* Map Top Action Controls - Single Clean Button */}
-                <View style={styles.mapActionRow}>
-                  <TouchableOpacity
-                    onPress={handleUseLiveLocation}
-                    disabled={isLocating}
-                    style={[styles.singlePinLocationBtn, isLocating && { opacity: 0.75 }]}
-                    activeOpacity={0.8}
-                  >
-                    {isLocating ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <MaterialCommunityIcons name="crosshairs-gps" size={15} color="#FFFFFF" />
-                    )}
-                    <Text style={styles.singlePinLocationBtnText}>
-                      {isLocating ? 'Locating Doorstep...' : 'Pin Current Location'}
-                    </Text>
-                  </TouchableOpacity>
+          {/* Pretty Summary Box (Closed) */}
+          {openProfileSection !== 'rates' ? (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => toggleProfileSection('rates')}
+              style={styles.prettySummaryContent}
+            >
+              <View style={styles.ratesSummaryGrid}>
+                <View style={[styles.ratesSummaryCard, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}>
+                  <Text style={[styles.ratesSummaryCardLabel, { color: activeTheme.textSecondary }]}>Hourly Rate</Text>
+                  <Text style={styles.ratesSummaryCardVal}>₹{formHourlyRate || '0'}<Text style={{ fontSize: 11, fontWeight: '600', color: activeTheme.textSecondary }}> / hr</Text></Text>
                 </View>
 
-                {/* Map Viewport Canvas with Authentic Google Roadmap / Satellite Tiles and Pop-Up Bubble */}
-                <View style={[styles.leafletMapCanvas, { borderColor: activeTheme.cardBorder }]}>
-                  {/* Real Google Maps Tile Background */}
-                  <Image
-                    source={{ uri: getGoogleMapTileUrl(mapLatitude, mapLongitude, mapZoom, mapLayer) }}
-                    style={StyleSheet.absoluteFill}
-                    resizeMode="cover"
+                <View style={[styles.ratesSummaryCard, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}>
+                  <Text style={[styles.ratesSummaryCardLabel, { color: activeTheme.textSecondary }]}>Daily Rate</Text>
+                  <Text style={styles.ratesSummaryCardVal}>₹{formDailyRate || '0'}<Text style={{ fontSize: 11, fontWeight: '600', color: activeTheme.textSecondary }}> / day</Text></Text>
+                </View>
+
+                <View style={[styles.ratesSummaryCard, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}>
+                  <Text style={[styles.ratesSummaryCardLabel, { color: activeTheme.textSecondary }]}>Monthly Rate</Text>
+                  <Text style={styles.ratesSummaryCardVal}>₹{formMonthlyRate || '0'}<Text style={{ fontSize: 11, fontWeight: '600', color: activeTheme.textSecondary }}> / mo</Text></Text>
+                </View>
+
+                <View style={[styles.ratesSummaryCard, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}>
+                  <Text style={[styles.ratesSummaryCardLabel, { color: activeTheme.textSecondary }]}>Expected Salary</Text>
+                  <Text style={styles.ratesSummaryCardVal}>₹{formExpectedSalary || '0'}<Text style={{ fontSize: 11, fontWeight: '600', color: activeTheme.textSecondary }}> / mo</Text></Text>
+                </View>
+              </View>
+              <View style={styles.prettySummaryHint}>
+                <MaterialCommunityIcons name="gesture-tap" size={13} color="#05c279" />
+                <Text style={[styles.prettySummaryHintText, { color: '#05c279' }]}>Tap to open form and edit</Text>
+              </View>
+            </TouchableOpacity>
+          ) : (
+            /* Open Form View */
+            <View style={styles.prettyFormWrap}>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={[styles.webFormRow, { flex: 1 }]}>
+                  <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Hourly Rate (₹):</Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={formHourlyRate}
+                    onChangeText={setFormHourlyRate}
+                    keyboardType="numeric"
+                    placeholder="e.g. 299"
+                    placeholderTextColor={activeTheme.textSecondary}
                   />
-
-                  {/* Top Left: Leaflet Style Zoom Controls (+ / -) */}
-                  <View style={styles.leafletZoomControl}>
-                    <TouchableOpacity onPress={handleZoomIn} style={styles.leafletZoomBtn} activeOpacity={0.8}>
-                      <Text style={styles.leafletZoomText}>+</Text>
-                    </TouchableOpacity>
-                    <View style={styles.leafletZoomDivider} />
-                    <TouchableOpacity onPress={handleZoomOut} style={styles.leafletZoomBtn} activeOpacity={0.8}>
-                      <Text style={styles.leafletZoomText}>−</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Top Right: Layer Switcher (Google Roadmap / Satellite) */}
-                  <TouchableOpacity onPress={handleToggleLayer} style={styles.leafletLayerBtn} activeOpacity={0.8}>
-                    <MaterialCommunityIcons
-                      name={mapLayer === 'roadmap' ? 'layers-outline' : 'earth'}
-                      size={18}
-                      color="#1E293B"
-                    />
-                  </TouchableOpacity>
-
-                  {/* Center Leaflet Blue Marker Pin with Floating Pop-Up Callout Bubble */}
-                  <View style={styles.leafletCenterPinContainer} pointerEvents="box-none">
-                    {/* Pop-Up Style Callout Bubble (Matching Web Screenshot) */}
-                    {showMapPopup && (
-                      <View style={styles.leafletPopupWrapper} pointerEvents="box-none">
-                        <View style={styles.leafletPopupCard}>
-                          <Text style={{ fontSize: 11, marginRight: 4 }}>📍</Text>
-                          <Text style={styles.leafletPopupText} numberOfLines={2}>
-                            {formAddress ? formAddress : `${mapLatitude.toFixed(5)}, ${mapLongitude.toFixed(5)}`}
-                          </Text>
-                          <TouchableOpacity
-                            onPress={() => setShowMapPopup(false)}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                            style={{ marginLeft: 6 }}
-                          >
-                            <MaterialCommunityIcons name="close" size={13} color="#94A3B8" />
-                          </TouchableOpacity>
-                        </View>
-                        {/* Downward triangle beak pointing directly to pin head */}
-                        <View style={styles.leafletPopupBeak} />
-                      </View>
-                    )}
-
-                    {/* Leaflet Blue Pin Marker */}
-                    <TouchableOpacity onPress={() => setShowMapPopup(prev => !prev)} activeOpacity={0.9} style={styles.leafletPinTouch}>
-                      <View style={styles.mapPinPulseRing} />
-                      <MaterialCommunityIcons name="map-marker" size={38} color="#0084FF" />
-                      <View style={styles.leafletPinShadow} />
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Fine-Tuning Nudge Controls Pad (Floating Bottom Right) */}
-                  <View style={styles.leafletNudgePad}>
-                    <TouchableOpacity
-                      onPress={() => handleNudgeCoords(0.0005, 0)}
-                      style={styles.leafletNudgeBtn}
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    >
-                      <MaterialCommunityIcons name="chevron-up" size={16} color="#FFFFFF" />
-                    </TouchableOpacity>
-                    <View style={{ flexDirection: 'row', gap: 4 }}>
-                      <TouchableOpacity
-                        onPress={() => handleNudgeCoords(0, -0.0005)}
-                        style={styles.leafletNudgeBtn}
-                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                      >
-                        <MaterialCommunityIcons name="chevron-left" size={16} color="#FFFFFF" />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => handleNudgeCoords(0, 0.0005)}
-                        style={styles.leafletNudgeBtn}
-                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                      >
-                        <MaterialCommunityIcons name="chevron-right" size={16} color="#FFFFFF" />
-                      </TouchableOpacity>
-                    </View>
-                    <TouchableOpacity
-                      onPress={() => handleNudgeCoords(-0.0005, 0)}
-                      style={styles.leafletNudgeBtn}
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                    >
-                      <MaterialCommunityIcons name="chevron-down" size={16} color="#FFFFFF" />
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Bottom Bar: Watermark & Coordinates (Matching Web Version) */}
-                  <View style={styles.leafletBottomBar}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 }}>
-                      <MaterialCommunityIcons name="information" size={11} color="#94A3B8" />
-                      <Text style={styles.leafletStatusText} numberOfLines={1}>Doorstep location pinned on map</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                      <Text style={styles.leafletCoordsText}>
-                        📍 {mapLatitude.toFixed(7)}, {mapLongitude.toFixed(7)}
-                      </Text>
-                      <Text style={styles.leafletWatermarkText}>Leaflet | © Google Maps</Text>
-                    </View>
-                  </View>
                 </View>
-
-                {/* Map Guidance Footer with Quick Sync */}
-                <View style={styles.mapFooterNote}>
-                  <MaterialCommunityIcons name="pin" size={13} color="#05c279" />
-                  <Text style={[styles.mapFooterNoteText, { color: activeTheme.textSecondary, flex: 1 }]}>
-                    Drag the pin or use nudge arrows to fine-tune your exact doorstep location
-                  </Text>
-                  <TouchableOpacity onPress={handleSyncPinDetails} style={styles.syncPinBtn}>
-                    <MaterialCommunityIcons name="sync" size={12} color="#05c279" />
-                    <Text style={styles.syncPinBtnText}>Sync Address</Text>
-                  </TouchableOpacity>
+                <View style={[styles.webFormRow, { flex: 1 }]}>
+                  <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Daily Rate (₹):</Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={formDailyRate}
+                    onChangeText={setFormDailyRate}
+                    keyboardType="numeric"
+                    placeholder="e.g. 1499"
+                    placeholderTextColor={activeTheme.textSecondary}
+                  />
                 </View>
               </View>
-            )}
 
-            {/* Full Address */}
-            <View style={styles.webFormRow}>
-              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Full Address: <Text style={{ color: '#FF453A' }}>*</Text></Text>
-              <TextInput
-                style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                value={formAddress}
-                onChangeText={setFormAddress}
-                placeholder="Enter street address, area or building name..."
-                placeholderTextColor={activeTheme.textSecondary}
-              />
-            </View>
-
-            {/* Landmark */}
-            <View style={styles.webFormRow}>
-              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Landmark: <Text style={{ color: '#FF453A' }}>*</Text></Text>
-              <TextInput
-                style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                value={formLandmark}
-                onChangeText={setFormLandmark}
-                placeholder="Enter nearby landmark..."
-                placeholderTextColor={activeTheme.textSecondary}
-              />
-            </View>
-
-            {/* Pincode & Service Range */}
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <View style={[styles.webFormRow, { flex: 1 }]}>
-                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Pincode: <Text style={{ color: '#FF453A' }}>*</Text></Text>
-                <TextInput
-                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                  value={formPincode}
-                  onChangeText={setFormPincode}
-                  keyboardType="numeric"
-                  placeholder="6-digit pincode"
-                  placeholderTextColor={activeTheme.textSecondary}
-                />
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                <View style={[styles.webFormRow, { flex: 1 }]}>
+                  <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Monthly Rate (₹):</Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={formMonthlyRate}
+                    onChangeText={setFormMonthlyRate}
+                    keyboardType="numeric"
+                    placeholder="e.g. 25000"
+                    placeholderTextColor={activeTheme.textSecondary}
+                  />
+                </View>
+                <View style={[styles.webFormRow, { flex: 1 }]}>
+                  <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Expected Salary (₹):</Text>
+                  <TextInput
+                    style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                    value={formExpectedSalary}
+                    onChangeText={setFormExpectedSalary}
+                    keyboardType="numeric"
+                    placeholder="e.g. 30000"
+                    placeholderTextColor={activeTheme.textSecondary}
+                  />
+                </View>
               </View>
 
-              <View style={[styles.webFormRow, { flex: 1 }]}>
-                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Service Range (KM):</Text>
-                <TextInput
-                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                  value={formRangeKm}
-                  onChangeText={setFormRangeKm}
-                  keyboardType="numeric"
-                  placeholder="e.g. 10"
-                  placeholderTextColor={activeTheme.textSecondary}
-                />
+              <View style={styles.prettyFormActionRow}>
+                <TouchableOpacity
+                  onPress={handleSaveProfile}
+                  disabled={isSavingProfile}
+                  style={[styles.prettyFormSaveBtn, { backgroundColor: '#05c279' }]}
+                >
+                  {isSavingProfile ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="check-bold" size={15} color="#FFFFFF" />
+                      <Text style={styles.prettyFormSaveBtnText}>Save Changes</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={handleCancelProfileEdit}
+                  style={[styles.prettyFormCancelBtn, { borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
+                >
+                  <Text style={[styles.prettyFormCancelBtnText, { color: activeTheme.textSecondary }]}>Cancel</Text>
+                </TouchableOpacity>
               </View>
             </View>
+          )}
+        </GlassCard>
 
-            {/* Permanent Address */}
-            <View style={styles.webFormRow}>
-              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Permanent Home Address:</Text>
-              <TextInput
-                style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                value={formPermanentAddress}
-                onChangeText={setFormPermanentAddress}
-                placeholder="Permanent home or registered address..."
-                placeholderTextColor={activeTheme.textSecondary}
-              />
-            </View>
-
-            {/* City, State & Country */}
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <View style={[styles.webFormRow, { flex: 1 }]}>
-                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>City:</Text>
-                <TextInput
-                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                  value={formCity}
-                  onChangeText={setFormCity}
-                  placeholder="e.g. Kolkata"
-                  placeholderTextColor={activeTheme.textSecondary}
-                />
+        {/* CONTAINER 6: ACCOUNT & VERIFICATION STATUS */}
+        <GlassCard theme={theme} style={styles.prettyProfileBox} intensity={activeTheme.glassIntensity}>
+          <View style={styles.prettyBoxHeader}>
+            <View style={styles.prettyBoxTitleWrap}>
+              <View style={[styles.prettyBoxIconWrap, { backgroundColor: 'rgba(5, 194, 121, 0.15)' }]}>
+                <MaterialCommunityIcons name="shield-check" size={20} color="#05c279" />
               </View>
-              <View style={[styles.webFormRow, { flex: 1 }]}>
-                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>State:</Text>
-                <TextInput
-                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                  value={formState}
-                  onChangeText={setFormState}
-                  placeholder="e.g. West Bengal"
-                  placeholderTextColor={activeTheme.textSecondary}
-                />
-              </View>
-              <View style={[styles.webFormRow, { flex: 0.8 }]}>
-                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Country:</Text>
-                <TextInput
-                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                  value={formCountry}
-                  onChangeText={setFormCountry}
-                  placeholder="India"
-                  placeholderTextColor={activeTheme.textSecondary}
-                />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.prettyBoxTitle, { color: activeTheme.textPrimary }]}>Account & Verification Status</Text>
+                <Text style={[styles.prettyBoxSubtitle, { color: activeTheme.textSecondary }]}>Platform role and verification standing</Text>
               </View>
             </View>
+          </View>
 
-            {/* Professional & Experience Subheader */}
-            <View style={styles.webSubheaderRow}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <MaterialCommunityIcons name="briefcase-outline" size={16} color="#05c279" />
-                <Text style={styles.webSubheaderTitle}>Professional & Experience</Text>
-              </View>
-            </View>
-
-            {/* About Me / Bio */}
-            <View style={styles.webFormRow}>
-              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>About Me / Bio:</Text>
-              <TextInput
-                style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg, minHeight: 70, textAlignVertical: 'top' }]}
-                value={formAboutMe}
-                onChangeText={setFormAboutMe}
-                multiline={true}
-                numberOfLines={3}
-                placeholder="Describe your expertise, specialty, and background..."
-                placeholderTextColor={activeTheme.textSecondary}
-              />
-            </View>
-
-            {/* Experience & Languages */}
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <View style={[styles.webFormRow, { flex: 0.9 }]}>
-                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Experience (Years):</Text>
-                <TextInput
-                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                  value={formExperience}
-                  onChangeText={setFormExperience}
-                  keyboardType="numeric"
-                  placeholder="e.g. 5"
-                  placeholderTextColor={activeTheme.textSecondary}
-                />
-              </View>
-              <View style={[styles.webFormRow, { flex: 1.5 }]}>
-                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Languages Spoken:</Text>
-                <TextInput
-                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                  value={formLanguages}
-                  onChangeText={setFormLanguages}
-                  placeholder="e.g. Hindi, English, Bengali"
-                  placeholderTextColor={activeTheme.textSecondary}
-                />
-              </View>
-            </View>
-
-            {/* Preferred Work Type & Working Hours */}
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <View style={[styles.webFormRow, { flex: 1 }]}>
-                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Preferred Work Type:</Text>
-                <TextInput
-                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                  value={formWorkType}
-                  onChangeText={setFormWorkType}
-                  placeholder="e.g. Full-time / On-demand"
-                  placeholderTextColor={activeTheme.textSecondary}
-                />
-              </View>
-              <View style={[styles.webFormRow, { flex: 1 }]}>
-                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Working Hours:</Text>
-                <TextInput
-                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                  value={formWorkingHours}
-                  onChangeText={setFormWorkingHours}
-                  placeholder="e.g. 09:00 AM - 07:00 PM"
-                  placeholderTextColor={activeTheme.textSecondary}
-                />
-              </View>
-            </View>
-
-            {/* Available From Date */}
-            <View style={styles.webFormRow}>
-              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Available From:</Text>
-              <TextInput
-                style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                value={formAvailableFrom}
-                onChangeText={setFormAvailableFrom}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor={activeTheme.textSecondary}
-              />
-            </View>
-
-            {/* Service Description */}
-            <View style={styles.webFormRow}>
-              <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Service Description:</Text>
-              <TextInput
-                style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg, minHeight: 60, textAlignVertical: 'top' }]}
-                value={formServiceDesc}
-                onChangeText={setFormServiceDesc}
-                multiline={true}
-                numberOfLines={2}
-                placeholder="Detailed description of services offered..."
-                placeholderTextColor={activeTheme.textSecondary}
-              />
-            </View>
-
-            {/* Rates & Salary Expectations Subheader */}
-            <View style={styles.webSubheaderRow}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <MaterialCommunityIcons name="currency-inr" size={16} color="#05c279" />
-                <Text style={styles.webSubheaderTitle}>Rates & Salary Expectations</Text>
-              </View>
-            </View>
-
-            {/* Hourly & Daily Rates */}
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <View style={[styles.webFormRow, { flex: 1 }]}>
-                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Hourly Rate (₹):</Text>
-                <TextInput
-                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                  value={formHourlyRate}
-                  onChangeText={setFormHourlyRate}
-                  keyboardType="numeric"
-                  placeholder="e.g. 299"
-                  placeholderTextColor={activeTheme.textSecondary}
-                />
-              </View>
-              <View style={[styles.webFormRow, { flex: 1 }]}>
-                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Daily Rate (₹):</Text>
-                <TextInput
-                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                  value={formDailyRate}
-                  onChangeText={setFormDailyRate}
-                  keyboardType="numeric"
-                  placeholder="e.g. 1499"
-                  placeholderTextColor={activeTheme.textSecondary}
-                />
-              </View>
-            </View>
-
-            {/* Monthly Rate & Expected Salary */}
-            <View style={{ flexDirection: 'row', gap: 10 }}>
-              <View style={[styles.webFormRow, { flex: 1 }]}>
-                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Monthly Rate (₹):</Text>
-                <TextInput
-                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                  value={formMonthlyRate}
-                  onChangeText={setFormMonthlyRate}
-                  keyboardType="numeric"
-                  placeholder="e.g. 25000"
-                  placeholderTextColor={activeTheme.textSecondary}
-                />
-              </View>
-              <View style={[styles.webFormRow, { flex: 1 }]}>
-                <Text style={[styles.webFormLabel, { color: activeTheme.textPrimary }]}>Expected Salary (₹):</Text>
-                <TextInput
-                  style={[styles.webFormInput, { color: activeTheme.textPrimary, borderColor: activeTheme.cardBorder, backgroundColor: activeTheme.tableHeaderBg }]}
-                  value={formExpectedSalary}
-                  onChangeText={setFormExpectedSalary}
-                  keyboardType="numeric"
-                  placeholder="e.g. 30000"
-                  placeholderTextColor={activeTheme.textSecondary}
-                />
-              </View>
-            </View>
-
-            {/* Account & Verification Status Subheader */}
-            <View style={styles.webSubheaderRow}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <MaterialCommunityIcons name="shield-check" size={16} color="#05c279" />
-                <Text style={[styles.webStatusSectionTitle, { color: activeTheme.textSecondary }]}>
-                  ACCOUNT & VERIFICATION STATUS
-                </Text>
-              </View>
-            </View>
-
-            {/* Status Badges List */}
+          <View style={[styles.prettySummaryContent, { paddingTop: 12 }]}>
             <View style={styles.webStatusTable}>
               <View style={styles.webStatusItemRow}>
                 <Text style={[styles.webStatusItemLabel, { color: activeTheme.textPrimary }]}>Role:</Text>
@@ -3824,7 +4342,7 @@ function ProviderAppContent() {
 
             {/* Operating as Individual Provider Box */}
             {!hasCompany && (
-              <View style={[styles.webIndividualBox, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder }]}>
+              <View style={[styles.webIndividualBox, { backgroundColor: activeTheme.tableHeaderBg, borderColor: activeTheme.cardBorder, marginTop: 10 }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
                   <MaterialCommunityIcons name="account-circle-outline" size={26} color="#8E8E93" />
                   <View style={{ flex: 1 }}>
@@ -3845,22 +4363,6 @@ function ProviderAppContent() {
                 </TouchableOpacity>
               </View>
             )}
-
-            {/* Bottom Save Profile Button */}
-            <TouchableOpacity
-              onPress={handleSaveProfile}
-              disabled={isSavingProfile}
-              style={[styles.webSaveProfileBtnBottom, { backgroundColor: '#05c279' }]}
-            >
-              {isSavingProfile ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <>
-                  <MaterialCommunityIcons name="content-save-outline" size={16} color="#FFFFFF" />
-                  <Text style={styles.webSaveProfileBtnBottomText}>Save Profile</Text>
-                </>
-              )}
-            </TouchableOpacity>
           </View>
         </GlassCard>
 
@@ -10720,6 +11222,158 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
+  },
+  prettyProfileBox: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 14,
+  },
+  prettyBoxHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  prettyBoxTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  prettyBoxIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  prettyBoxTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: -0.2,
+  },
+  prettyBoxSubtitle: {
+    fontSize: 11,
+    marginTop: 1,
+  },
+  prettyBoxEditBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 4,
+  },
+  prettyBoxEditBtnText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  prettySummaryContent: {
+    paddingTop: 10,
+    gap: 7,
+  },
+  prettySummaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 3,
+  },
+  prettySummaryLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  prettySummaryVal: {
+    fontSize: 12.5,
+    fontWeight: '700',
+    maxWidth: '65%',
+    textAlign: 'right',
+  },
+  prettyValueChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    gap: 4,
+  },
+  prettyValueChipText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  prettySummaryHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 6,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.05)',
+    gap: 4,
+  },
+  prettySummaryHintText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  prettyFormWrap: {
+    paddingTop: 14,
+  },
+  prettyFormActionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+  },
+  prettyFormSaveBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 11,
+    borderRadius: 10,
+    gap: 6,
+  },
+  prettyFormSaveBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  prettyFormCancelBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  prettyFormCancelBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  ratesSummaryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingTop: 6,
+  },
+  ratesSummaryCard: {
+    width: '48%',
+    flexGrow: 1,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  ratesSummaryCardLabel: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  ratesSummaryCardVal: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#05c279',
   },
   regBadgePill: {
     backgroundColor: 'rgba(5, 194, 121, 0.15)',
