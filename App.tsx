@@ -450,6 +450,14 @@ function ProviderAppContent() {
   // Active Provider ID in use (null if not logged in)
   const activeProviderId = (providerUser?.id ? Number(providerUser.id) : null) || (profileData?.id ? Number(profileData.id) : null) || null;
 
+  // ─── Provider KYC Verification Status Helper ─────────────────────────────────
+  const isProviderIdApproved = (): boolean => {
+    const progress = profileData?.progress;
+    const idStatus = (progress?.id_status || profileData?.verified_status || '').toLowerCase();
+    return idStatus === 'approved' || idStatus === 'verified';
+  };
+
+
   // Load persisted On/Off Duty status whenever provider logs in
   useEffect(() => {
     if (!activeProviderId) return;
@@ -457,6 +465,12 @@ function ProviderAppContent() {
     AsyncStorage.getItem(`serveasy_provider_duty_${activeProviderId}`)
       .then((val) => {
         if (!mounted || val === null) return;
+        // If provider ID is not approved by admin / superadmin, force Offline
+        if (!isProviderIdApproved()) {
+          setIsOnDuty(false);
+          isOnDutyRef.current = false;
+          return;
+        }
         const duty = val !== '0';
         setIsOnDuty(duty);
         isOnDutyRef.current = duty;
@@ -465,7 +479,7 @@ function ProviderAppContent() {
     return () => {
       mounted = false;
     };
-  }, [activeProviderId]);
+  }, [activeProviderId, profileData?.verified_status, profileData?.progress?.id_status]);
 
   const openOffDutySheet = () => {
     offDutySheetAnim.setValue(400);
@@ -512,7 +526,32 @@ function ProviderAppContent() {
       return;
     }
 
-    // When currently Offline, tap immediately turns Online
+    // SECURITY & COMPLIANCE GATE: Prevent going Online if ID is not approved by admin / superadmin
+    if (!isProviderIdApproved()) {
+      const progress = profileData?.progress;
+      const idStatus = (progress?.id_status || profileData?.verified_status || 'pending').toLowerCase();
+
+      let statusDesc = 'You cannot go Online until your Government ID & Verification have been reviewed and approved by an Admin or Superadmin.';
+      if (idStatus === 'under_review' || idStatus === 'pending') {
+        statusDesc = 'Your Government ID verification is currently Under Review by the admin team. You will be able to go Online as soon as it is approved.';
+      } else if (idStatus === 'rejected') {
+        statusDesc = 'Your ID verification was rejected by Admin. Please re-submit your ID documents to be reviewed and approved.';
+      } else {
+        statusDesc = 'Please complete your ID verification and submit official proof. Once approved by Admin or Superadmin, you can go Online.';
+      }
+
+      showCustomAlert(
+        'ID Approval Required 🛡️',
+        statusDesc,
+        [
+          { text: 'Submit / View ID 🪪', onPress: () => setActiveSection('verification') },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+      return;
+    }
+
+    // When currently Offline and approved, tap turns Online
     const targetId = Number(activeProviderId || profileData?.id || providerUser?.id || 0);
     setIsOnDuty(true);
     isOnDutyRef.current = true;
@@ -648,8 +687,16 @@ function ProviderAppContent() {
         }
         setProfileData(fetchedProfile);
 
-        // Sync On/Off Duty state with serveasy-providers.is_active
-        if (fetchedProfile && fetchedProfile.is_active !== undefined && fetchedProfile.is_active !== null) {
+        // Sync On/Off Duty state with serveasy-providers.is_active (Gated by ID Approval)
+        const verStatus = (fetchedProfile.verified_status || fetchedProfile.progress?.id_status || '').toLowerCase();
+        const isApproved = verStatus === 'approved' || verStatus === 'verified';
+        if (!isApproved) {
+          setIsOnDuty(false);
+          isOnDutyRef.current = false;
+          if (activeProviderId) {
+            AsyncStorage.setItem(`serveasy_provider_duty_${activeProviderId}`, '0').catch(() => {});
+          }
+        } else if (fetchedProfile && fetchedProfile.is_active !== undefined && fetchedProfile.is_active !== null) {
           const serverDuty = Boolean(Number(fetchedProfile.is_active));
           setIsOnDuty(serverDuty);
           isOnDutyRef.current = serverDuty;
@@ -1672,12 +1719,6 @@ function ProviderAppContent() {
     }
   };
 
-  // ─── Provider KYC Verification Status Helper ─────────────────────────────────
-  const isProviderIdApproved = (): boolean => {
-    const progress = profileData?.progress;
-    const idStatus = (progress?.id_status || profileData?.verified_status || '').toLowerCase();
-    return idStatus === 'approved' || idStatus === 'verified';
-  };
 
   // ─── Provider Avatar Upload via ScalePixel (In-App Flow with Security Gate) ───
   const promptAvatarSource = () => {
