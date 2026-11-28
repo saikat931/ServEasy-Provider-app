@@ -3421,25 +3421,33 @@ function ProviderAppContent() {
             >
               <View style={styles.prettySummaryRow}>
                 <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Primary Phone</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]}>{formPhone || 'Not set'}</Text>
+                <View style={styles.prettySummaryValWrap}>
+                  <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]} numberOfLines={1}>
+                    {formPhone || 'Not set'}
+                  </Text>
                   {formPhone ? <MaterialCommunityIcons name="check-circle" size={13} color="#05c279" /> : null}
                 </View>
               </View>
               <View style={styles.prettySummaryRow}>
                 <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>WhatsApp Number</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <View style={styles.prettySummaryValWrap}>
                   <MaterialCommunityIcons name="whatsapp" size={14} color="#25D366" />
-                  <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]}>{formWhatsapp || 'Not provided'}</Text>
+                  <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]} numberOfLines={1}>
+                    {formWhatsapp || 'Not provided'}
+                  </Text>
                 </View>
               </View>
               <View style={styles.prettySummaryRow}>
                 <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Alternate Phone</Text>
-                <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]}>{formAltPhone || 'Not provided'}</Text>
+                <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]} numberOfLines={1}>
+                  {formAltPhone || 'Not provided'}
+                </Text>
               </View>
               <View style={styles.prettySummaryRow}>
                 <Text style={[styles.prettySummaryLabel, { color: activeTheme.textSecondary }]}>Email Address</Text>
-                <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]}>{formEmail || 'Not set'}</Text>
+                <Text style={[styles.prettySummaryVal, { color: activeTheme.textPrimary }]} numberOfLines={1} ellipsizeMode="tail">
+                  {formEmail || 'Not set'}
+                </Text>
               </View>
               <View style={styles.prettySummaryHint}>
                 <MaterialCommunityIcons name="gesture-tap" size={13} color="#05c279" />
@@ -11280,17 +11288,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 3,
+    paddingVertical: 3.5,
+    gap: 10,
   },
   prettySummaryLabel: {
     fontSize: 12,
     fontWeight: '600',
+    flexShrink: 0,
   },
   prettySummaryVal: {
     fontSize: 12.5,
     fontWeight: '700',
-    maxWidth: '65%',
     textAlign: 'right',
+    flexShrink: 1,
+  },
+  prettySummaryValWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flexShrink: 0,
+    gap: 5,
   },
   prettyValueChip: {
     flexDirection: 'row',
